@@ -1,0 +1,59 @@
+plugins {
+  id "io.spring.dependency-management" version "1.0.5.RELEASE" apply false
+}
+
+allprojects {
+  group 'io.knotx'
+
+  repositories {
+    jcenter()
+    maven { url "https://plugins.gradle.org/m2/" }
+    maven { url "https://oss.sonatype.org/content/groups/staging/" }
+  }
+}
+
+description = 'Knot.x JUnit5 test module'
+
+defaultTasks = ['build']
+
+apply plugin: 'java'
+apply plugin: 'maven'
+apply plugin: 'io.spring.dependency-management'
+
+dependencyManagement {
+  imports {
+    mavenBom 'io.knotx:knotx-dependencies:1.3.1-SNAPSHOT'
+    mavenBom 'org.junit:junit-bom:5.2.0'
+  }
+}
+
+tasks.withType(JavaCompile) {
+  options.encoding = 'UTF-8'
+  options.compilerArgs << '-Xlint:deprecation'
+  options.incremental = true
+}
+
+
+dependencies {
+  compile 'io.knotx:knotx-core'
+  compile 'io.knotx:knotx-mocks'
+
+  compile 'io.vertx:vertx-core'
+  compile 'io.vertx:vertx-service-proxy'
+  compile 'io.vertx:vertx-rx-java2'
+  compile 'io.vertx:vertx-config'
+  compile 'io.vertx:vertx-junit5'
+
+  compile 'org.junit.jupiter:junit-jupiter-api'
+  compile 'org.junit.jupiter:junit-jupiter-params'
+  compile 'org.junit.jupiter:junit-jupiter-migrationsupport'
+
+  compile 'org.powermock:powermock-api-mockito'
+  compile 'com.github.tomakehurst:wiremock:2.17.0'
+}
+
+test {
+  systemProperties = [
+      'vertx.logger-delegate-factory-class-name': 'io.vertx.core.logging.SLF4JLogDelegateFactory'
+  ]
+}
