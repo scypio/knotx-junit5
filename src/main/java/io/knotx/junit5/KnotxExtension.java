@@ -211,7 +211,7 @@ public class KnotxExtension extends KnotxBaseExtension
     }
   }
 
-  /** */
+  /** Load Knot.x config from given resource and apply it to Vertx instance */
   private void loadKnotxConfig(Vertx vertx, KnotxApplyConfiguration knotxConfig) {
     if (knotxConfig == null || knotxConfig.value().isEmpty()) {
       throw new IllegalArgumentException(
