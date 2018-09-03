@@ -36,7 +36,6 @@ tasks.withType(JavaCompile) {
 
 dependencies {
   compile 'io.knotx:knotx-core'
-  compile 'io.knotx:knotx-mocks'
 
   compile 'io.vertx:vertx-core'
   compile 'io.vertx:vertx-service-proxy'
@@ -48,7 +47,11 @@ dependencies {
   compile 'org.junit.jupiter:junit-jupiter-params'
   compile 'org.junit.jupiter:junit-jupiter-migrationsupport'
 
-  compile 'org.powermock:powermock-api-mockito'
+  /* Versions are hardcoded due to how Maven BOM scopes work
+   * Mockito and Wiremock are set to 'test' in BOM, but here
+   * we need to compile against them */
+  compile 'org.mockito:mockito-core:2.21.0'
+  compile 'org.mockito:mockito-junit-jupiter:2.21.0'
   compile 'com.github.tomakehurst:wiremock:2.17.0'
 }
 

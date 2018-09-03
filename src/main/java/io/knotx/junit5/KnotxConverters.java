@@ -29,7 +29,8 @@ class KnotxConverters {
 
   private static final String DEFAULT_SNIPPET_TAG_NAME = "script";
   private static final String DEFAULT_SNIPPET_PARAM_PREFIX = "data-knotx-";
-  private static final String PARAMETER_SEPARATOR = "\\|";
+  private static final String PARAMETER_SEPARATOR_REGEX = "\\|";
+  private static final String PARAMETER_SEPARATOR = "|";
 
   /**
    * Builds mock of {@link io.knotx.dataobjects.Fragment} from provided fragmentParameters. The only
@@ -43,13 +44,13 @@ class KnotxConverters {
    *
    * You can embed them in the fragmentParameters, separated by <bb>|</bb> character.<br>
    * <br>
-   * <i>Example:</i> "content.txt;knotx:snippet;data-knotx-" will produce Fragment mock with content
+   * <i>Example:</i> "content.txt|knotx:snippet|data-knotx-" will produce Fragment mock with content
    * read from content.txt, snippet tag name set to "knotx:snippet" and snippet parameters prefix
    * set to "data-knotx-". If the last character of fragmentParameters is the separator <bb>|</bb>,
    * then snippet parameters prefix will be set to empty string (no prefix).
    */
   static Fragment createFragmentMock(String fragmentParameters) throws IOException {
-    final String[] params = fragmentParameters.split(PARAMETER_SEPARATOR);
+    final String[] params = fragmentParameters.split(PARAMETER_SEPARATOR_REGEX);
     final String fragmentContentFile = params[0];
     final String snippetTagName = extractSnippetTagName(params);
     final String fragmentContent = KnotxTestUtils.readText(fragmentContentFile);
@@ -78,8 +79,8 @@ class KnotxConverters {
   private static String extractSnippetParamPrefix(String[] params, String fragmentParameters) {
     if (params.length > 2) {
       return params[2];
-    } else if (StringUtils.endsWith(fragmentParameters, "|")) {
-      return  "";
+    } else if (StringUtils.endsWith(fragmentParameters, PARAMETER_SEPARATOR)) {
+      return "";
     }
     return DEFAULT_SNIPPET_PARAM_PREFIX;
   }
