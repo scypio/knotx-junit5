@@ -1,5 +1,8 @@
 plugins {
-  id "io.spring.dependency-management" version "1.0.5.RELEASE" apply false
+  id 'io.spring.dependency-management' version '1.0.5.RELEASE'
+  id 'java-library'
+  id 'maven-publish'
+  id 'signing'
 }
 
 allprojects {
@@ -7,18 +10,15 @@ allprojects {
 
   repositories {
     jcenter()
-    maven { url "https://plugins.gradle.org/m2/" }
+    maven { url 'https://plugins.gradle.org/m2/' }
     maven { url "https://oss.sonatype.org/content/groups/staging/" }
+    maven { url 'https://oss.sonatype.org/content/repositories/snapshots' }
   }
 }
 
 description = 'Knot.x JUnit5 test module'
 
 defaultTasks = ['build']
-
-apply plugin: 'java'
-apply plugin: 'maven'
-apply plugin: 'io.spring.dependency-management'
 
 dependencyManagement {
   imports {
@@ -56,4 +56,46 @@ test {
   systemProperties = [
       'vertx.logger-delegate-factory-class-name': 'io.vertx.core.logging.SLF4JLogDelegateFactory'
   ]
+}
+
+task javadocJar(type: Jar) {
+  classifier = 'javadoc'
+  from javadoc
+}
+
+task sourcesJar(type: Jar) {
+  classifier = 'sources'
+  from sourceSets.main.allSource
+}
+
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      from components.java
+      artifact sourcesJar
+      artifact javadocJar
+    }
+  }
+  repositories {
+    maven {
+      def releasesRepoUrl = 'https://oss.sonatype.org/service/local/staging/deploy/maven2/'
+      def snapshotsRepoUrl = 'https://oss.sonatype.org/content/repositories/snapshots'
+      url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+      credentials {
+        username "${ossrhUsername}"
+        password "${ossrhPassword}"
+      }
+    }
+  }
+}
+
+signing {
+  useGpgCmd()
+  sign configurations.archives
+}
+
+javadoc {
+  if (JavaVersion.current().isJava9Compatible()) {
+    options.addBooleanOption('html4', true)
+  }
 }
