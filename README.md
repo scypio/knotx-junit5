@@ -1,6 +1,7 @@
 # Knot.x JUnit 5
-JUnit 5 extensions and data type converters for Knot.x tests
+JUnit 5 extensions and data type converters for Knot.x tests.
 
+## Extensions
 Provides following helpers:
 
 ### KnotxExtension
@@ -78,4 +79,18 @@ public class ParameterizedTest {
     // ...
   }
 }
+```
+
+## Release
+
+### Deploy SNAPSHOT version to Maven Central:
+Update your `gradle.properties` file with keys
+```json
+ossrhUsername=USERNAME
+ossrhPassword=PASSWORD
+```
+
+then run command
+```json
+gradlew publish
 ```
