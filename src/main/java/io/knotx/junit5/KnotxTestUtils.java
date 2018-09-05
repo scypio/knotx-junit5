@@ -33,6 +33,7 @@ public class KnotxTestUtils {
    *
    * @param path resource path
    * @return resource contents
+   * @throws IOException resource can not be read
    */
   public static String readText(String path) throws IOException {
     return Resources.toString(Resources.getResource(path), StandardCharsets.UTF_8);

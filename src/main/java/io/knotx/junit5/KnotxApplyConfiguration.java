@@ -20,9 +20,22 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/** Injects specified Knot.x configuration into Vert.x instance */
+/**
+ * Specifies Knot.x configuration path. More details about Knot.x configuration can be found <a
+ * href="https://github.com/Cognifide/knotx/wiki/Configuration">here</a>.
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
 public @interface KnotxApplyConfiguration {
+
+  /**
+   * Configuration file path.
+   *
+   * Knot.x uses <a href="https://github.com/lightbend/config/blob/master/HOCON.md">HOCON</a> syntax
+   * for files with *.conf extension, otherwise uses JSON.
+   *
+   * @return configuration file path
+   */
   String value();
+  
 }
