@@ -30,6 +30,9 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface KnotxWiremock {
 
-  /** Port on which server should start. */
+  /**
+   * Port on which server should start.
+   * @return mock server port
+   */
   int port() default Options.DYNAMIC_PORT;
 }

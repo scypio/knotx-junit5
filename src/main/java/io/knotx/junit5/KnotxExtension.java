@@ -30,6 +30,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.AfterTestExecutionCallback;
@@ -48,21 +49,21 @@ import org.junit.jupiter.api.extension.ParameterResolver;
  * Injects and manages instances of:
  *
  * <ul>
- *   <li>{@linkplain io.vertx.core.Vertx}, with Knot.x config injection via {@linkplain
- *       KnotxApplyConfiguration}
- *   <li>{@linkplain io.vertx.reactivex.core.Vertx}, same as above
- *   <li>{@linkplain com.github.tomakehurst.wiremock.WireMockServer} when annotated with {@linkplain
- *       KnotxWiremock}
+ * <li>{@linkplain io.vertx.core.Vertx}, with Knot.x config injection via {@linkplain
+ * KnotxApplyConfiguration}
+ * <li>{@linkplain io.vertx.reactivex.core.Vertx}, same as above
+ * <li>{@linkplain com.github.tomakehurst.wiremock.WireMockServer} when annotated with {@linkplain
+ * KnotxWiremock}
  * </ul>
  */
 public class KnotxExtension extends KnotxBaseExtension
     implements ParameterResolver,
-        BeforeEachCallback,
-        AfterEachCallback,
-        AfterTestExecutionCallback,
-        BeforeTestExecutionCallback,
-        AfterAllCallback,
-        BeforeAllCallback {
+    BeforeEachCallback,
+    AfterEachCallback,
+    AfterTestExecutionCallback,
+    BeforeTestExecutionCallback,
+    AfterAllCallback,
+    BeforeAllCallback {
 
   private static final long DEFAULT_TIMEOUT_SECONDS = 30;
   private static final String VERTX_INSTANCE_STORE_KEY = "VertxInstance";
@@ -211,18 +212,21 @@ public class KnotxExtension extends KnotxBaseExtension
     }
   }
 
-  /** Load Knot.x config from given resource and apply it to Vertx instance */
+  /**
+   * Load Knot.x config from given resource and apply it to Vertx instance
+   */
   private void loadKnotxConfig(Vertx vertx, KnotxApplyConfiguration knotxConfig) {
-    if (knotxConfig == null || knotxConfig.value().isEmpty()) {
+    if (knotxConfig == null || StringUtils.isBlank(knotxConfig.path()) || StringUtils
+        .isBlank(knotxConfig.format())) {
       throw new IllegalArgumentException(
-          "Missing @KnotxApplyConfiguration annotation with the path to configuration JSON");
+          "Missing @KnotxApplyConfiguration annotation with the path and format to configuration JSON");
     }
 
     CompletableFuture<Void> toComplete = new CompletableFuture<>();
 
     vertx.deployVerticle(
         KnotxStarterVerticle.class.getName(),
-        createConfig(knotxConfig.value()),
+        createConfig(knotxConfig.path(), knotxConfig.format()),
         ar -> {
           if (ar.succeeded()) {
             toComplete.complete(null);
@@ -239,7 +243,7 @@ public class KnotxExtension extends KnotxBaseExtension
     }
   }
 
-  private DeploymentOptions createConfig(String path) {
+  private DeploymentOptions createConfig(String path, String format) {
     return new DeploymentOptions()
         .setConfig(
             new JsonObject()
@@ -250,12 +254,9 @@ public class KnotxExtension extends KnotxBaseExtension
                             Lists.newArrayList(
                                 new ConfigStoreOptions()
                                     .setType("file")
-                                    .setFormat(getConfigFormat(path))
+                                    .setFormat(format)
                                     .setConfig(new JsonObject().put("path", path))))
                         .toJson()));
   }
 
-  private String getConfigFormat(String path) {
-    return path.substring(path.lastIndexOf('.') + 1);
-  }
 }

@@ -31,10 +31,6 @@ public @interface KnotxApplyConfiguration {
   /**
    * Configuration file path.
    *
-   * If a path starts with "${KNOTX_HOME}" it is replaced with value from properties or from system
-   * variables. If both of them are not defined then {@see io.knotx.launcher.BadKnotxConfigurationException}
-   * is thrown.
-   *
    * @return configuration file path
    */
   String path();
