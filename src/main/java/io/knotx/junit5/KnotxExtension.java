@@ -216,17 +216,16 @@ public class KnotxExtension extends KnotxBaseExtension
    * Load Knot.x config from given resource and apply it to Vertx instance
    */
   private void loadKnotxConfig(Vertx vertx, KnotxApplyConfiguration knotxConfig) {
-    if (knotxConfig == null || StringUtils.isBlank(knotxConfig.path()) || StringUtils
-        .isBlank(knotxConfig.format())) {
+    if (knotxConfig == null || StringUtils.isBlank(knotxConfig.value())) {
       throw new IllegalArgumentException(
-          "Missing @KnotxApplyConfiguration annotation with the path and format to configuration JSON");
+          "Missing @KnotxApplyConfiguration annotation with the path to configuration JSON");
     }
 
     CompletableFuture<Void> toComplete = new CompletableFuture<>();
 
     vertx.deployVerticle(
         KnotxStarterVerticle.class.getName(),
-        createConfig(knotxConfig.path(), knotxConfig.format()),
+        createConfig(knotxConfig.value()),
         ar -> {
           if (ar.succeeded()) {
             toComplete.complete(null);
@@ -243,7 +242,7 @@ public class KnotxExtension extends KnotxBaseExtension
     }
   }
 
-  private DeploymentOptions createConfig(String path, String format) {
+  private DeploymentOptions createConfig(String path) {
     return new DeploymentOptions()
         .setConfig(
             new JsonObject()
@@ -254,9 +253,19 @@ public class KnotxExtension extends KnotxBaseExtension
                             Lists.newArrayList(
                                 new ConfigStoreOptions()
                                     .setType("file")
-                                    .setFormat(format)
+                                    .setFormat(getConfigFormat(path))
                                     .setConfig(new JsonObject().put("path", path))))
                         .toJson()));
   }
 
+  private String getConfigFormat(String path) {
+    String extension = path.substring(path.lastIndexOf('.') + 1);
+    if ("conf".equals(extension)) {
+      return "hocon";
+    } else if ("json".equals(extension)) {
+      return "json";
+    } else {
+      throw new IllegalArgumentException("Configuration file format not supported!");
+    }
+  }
 }
