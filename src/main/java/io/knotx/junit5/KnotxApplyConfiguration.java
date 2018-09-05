@@ -20,9 +20,32 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/** Injects specified Knot.x configuration into Vert.x instance */
+/**
+ * Specifies Knot.x configuration path and syntax. More details about Knot.x configuration can be
+ * found <a href="https://github.com/Cognifide/knotx/wiki/Configuration">here</a>.
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
 public @interface KnotxApplyConfiguration {
-  String value();
+
+  /**
+   * Configuration file path.
+   *
+   * If a path starts with "${KNOTX_HOME}" it is replaced with value from properties or from system
+   * variables. If both of them are not defined then {@see io.knotx.launcher.BadKnotxConfigurationException}
+   * is thrown.
+   *
+   * @return configuration file path
+   */
+  String path();
+
+  /**
+   * Configuration syntax. Knot.x uses <a href="https://github.com/lightbend/config/blob/master/HOCON.md">HOCON</a>
+   * by default that keeps the semantics from JSON. Knot.x previous versions used JSON so the
+   * default format is JSON.
+   *
+   * @return configuration syntax
+   */
+  String format() default "json";
+
 }

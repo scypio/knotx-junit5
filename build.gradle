@@ -41,6 +41,7 @@ dependencies {
   compile 'io.vertx:vertx-service-proxy'
   compile 'io.vertx:vertx-rx-java2'
   compile 'io.vertx:vertx-config'
+  compile 'io.vertx:vertx-config-hocon'
   compile 'io.vertx:vertx-junit5'
 
   compile 'org.junit.jupiter:junit-jupiter-api'
