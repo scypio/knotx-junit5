@@ -1,8 +1,6 @@
 plugins {
-  id 'io.spring.dependency-management' version '1.0.5.RELEASE'
   id 'java-library'
-  id 'maven-publish'
-  id 'signing'
+  id 'io.spring.dependency-management' version '1.0.5.RELEASE'
 }
 
 allprojects {
@@ -61,44 +59,4 @@ test {
   ]
 }
 
-task javadocJar(type: Jar) {
-  classifier = 'javadoc'
-  from javadoc
-}
-
-task sourcesJar(type: Jar) {
-  classifier = 'sources'
-  from sourceSets.main.allSource
-}
-
-publishing {
-  publications {
-    mavenJava(MavenPublication) {
-      from components.java
-      artifact sourcesJar
-      artifact javadocJar
-    }
-  }
-  repositories {
-    maven {
-      def releasesRepoUrl = 'https://oss.sonatype.org/service/local/staging/deploy/maven2/'
-      def snapshotsRepoUrl = 'https://oss.sonatype.org/content/repositories/snapshots'
-      url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
-      credentials {
-        username "${ossrhUsername}"
-        password "${ossrhPassword}"
-      }
-    }
-  }
-}
-
-signing {
-  useGpgCmd()
-  sign configurations.archives
-}
-
-javadoc {
-  if (JavaVersion.current().isJava9Compatible()) {
-    options.addBooleanOption('html4', true)
-  }
-}
+apply from: "${rootProject.projectDir}/release.gradle"

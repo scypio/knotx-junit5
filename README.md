@@ -81,20 +81,6 @@ public class ParameterizedTest {
 }
 ```
 
-## Release
-
-### Deploy SNAPSHOT version to Maven Central:
-Update your `gradle.properties` file with keys
-```json
-ossrhUsername=USERNAME
-ossrhPassword=PASSWORD
-```
-
-then run command
-```json
-gradlew publish
-```
-
 ## Bugs
 All feature requests and bugs can be filed as issues on [Gitub](https://github.com/Knotx/knotx-junit5/issues).
 Do not use Github issues to ask questions, post them on the [User Group](https://groups.google.com/forum/#!forum/knotx) or [Gitter Chat](https://gitter.im/Knotx/Lobby).
