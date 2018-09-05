@@ -29,8 +29,7 @@ public interface FileReader {
 
   static String readTextSafe(String path) {
     try {
-      return CharStreams
-          .toString(new InputStreamReader(Resources.getResource(path).openStream(), "utf-8"));
+      return readText(path);
     } catch (IOException e) {
       throw new IllegalArgumentException("Could not load text from [" + path + "]");
     }
