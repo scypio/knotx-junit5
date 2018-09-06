@@ -29,13 +29,13 @@ import java.lang.annotation.Target;
 public @interface KnotxApplyConfiguration {
 
   /**
-   * Configuration file path.
+   * Configuration files paths.
    *
    * Knot.x uses <a href="https://github.com/lightbend/config/blob/master/HOCON.md">HOCON</a> syntax
    * for files with *.conf extension, otherwise uses JSON.
    *
-   * @return configuration file path
+   * @return configuration files
    */
-  String value();
-  
+  String[] value();
+
 }

@@ -30,7 +30,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.apache.commons.lang3.StringUtils;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.AfterTestExecutionCallback;
@@ -216,7 +216,7 @@ public class KnotxExtension extends KnotxBaseExtension
    * Load Knot.x config from given resource and apply it to Vertx instance
    */
   private void loadKnotxConfig(Vertx vertx, KnotxApplyConfiguration knotxConfig) {
-    if (knotxConfig == null || StringUtils.isBlank(knotxConfig.value())) {
+    if (knotxConfig == null) {
       throw new IllegalArgumentException(
           "Missing @KnotxApplyConfiguration annotation with the path to configuration JSON");
     }
@@ -242,20 +242,23 @@ public class KnotxExtension extends KnotxBaseExtension
     }
   }
 
-  private DeploymentOptions createConfig(String path) {
+  private DeploymentOptions createConfig(String[] paths) {
+    JsonObject storesConfig = new ConfigRetrieverOptions()
+        .setStores(
+            Lists.newArrayList(Stream.of(paths).map(path ->
+                new ConfigStoreOptions()
+                    .setType("file")
+                    .setFormat(getConfigFormat(path))
+                    .setConfig(new JsonObject().put("path", path))).iterator()
+            )
+        )
+        .toJson();
     return new DeploymentOptions()
         .setConfig(
             new JsonObject()
                 .put(
                     "configRetrieverOptions",
-                    new ConfigRetrieverOptions()
-                        .setStores(
-                            Lists.newArrayList(
-                                new ConfigStoreOptions()
-                                    .setType("file")
-                                    .setFormat(getConfigFormat(path))
-                                    .setConfig(new JsonObject().put("path", path))))
-                        .toJson()));
+                    storesConfig));
   }
 
   private String getConfigFormat(String path) {
