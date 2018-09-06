@@ -1,32 +1,46 @@
 # Knot.x JUnit 5
-JUnit 5 extensions and data type converters for Knot.x tests.
+JUnit 5 extensions and data type converters for Knot.x integration tests. Those tests allow to setup
+Knot.x instance with declared modules. It can be used both for module tests and regression tests.
 
 ## Extensions
 Provides following helpers:
 
 ### KnotxExtension
 
-Knot.x-specific extension that manages test Vert.x instances (with Knot.x configuration injection) and WireMock servers (through KnotxWiremockExtension).
+Knot.x-specific extension that manages test Vert.x instances (with Knot.x configuration injection) 
+and WireMock servers (through KnotxWiremockExtension).
 
 **Example usage:**
 
 ```java
 @ExtendWith(KnotxExtension.class)
-public class DataBridgeIntegrationTest {
+public class ExampleIntegrationTest {
 
-  private static final int MOCK_SERVICE_PORT_NUMBER = 3000;
+  @KnotxWiremock(port = 4001)
+  protected WireMockServer mockRepository;
 
   @Test
-  @KnotxConfiguration("bridgeStack.conf")
-  public void callDataBridge_validKnotContextResult(
-      VertxTestContext context,
-      Vertx vertx,
-      @KnotxWiremock(port = MOCK_SERVICE_PORT_NUMBER) WireMockServer server)
-      throws IOException, URISyntaxException {
+  @KnotxApplyConfiguration({"default.conf", "overloaded.conf"})
+  public void callModule_validKnotContextResult(VertxTestContext context, Vertx vertx) {
     // ...
   }
 }
 ```
+
+#### @KnotxApplyConfiguration
+The annotation allows to specify one and more Knot.x configuration/s. It accepts a paths array and loads
+all configuration entries using [Vert.x Config](https://vertx.io/docs/vertx-config/java/) file stores. 
+It supports two configuration semantics:
+
+- JSON (files with `json` extension)
+- HOCON (files with `conf` extension)
+
+The order of the configuration files is important as it defines the overloading. 
+For conflicting key, configurations arriving last overloads the value provided by the previous 
+configuration files.
+
+See [Vert.x Config overloading rules](https://vertx.io/docs/vertx-config/java/#_overloading_rules) 
+for more details.
 
 ### KnotxWiremockExtension
 
