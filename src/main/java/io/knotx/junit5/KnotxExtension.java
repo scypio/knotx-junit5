@@ -42,6 +42,7 @@ import org.junit.jupiter.api.extension.ExtensionContext.Store;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
+import org.junit.jupiter.api.extension.TestInstancePostProcessor;
 
 /**
  * Support for field and parameter injection for Knot.x tests <br>
@@ -63,7 +64,8 @@ public class KnotxExtension extends KnotxBaseExtension
     AfterTestExecutionCallback,
     BeforeTestExecutionCallback,
     AfterAllCallback,
-    BeforeAllCallback {
+    BeforeAllCallback,
+    TestInstancePostProcessor {
 
   private static final long DEFAULT_TIMEOUT_SECONDS = 30;
   private static final String VERTX_INSTANCE_STORE_KEY = "VertxInstance";
@@ -104,7 +106,12 @@ public class KnotxExtension extends KnotxBaseExtension
 
   @Override
   public void beforeAll(ExtensionContext context) throws Exception {
-    wiremockExtension.beforeAll(context);
+  }
+
+  @Override
+  public void postProcessTestInstance(Object testInstance, ExtensionContext context)
+      throws Exception {
+    wiremockExtension.postProcessTestInstance(testInstance, context);
   }
 
   @Override

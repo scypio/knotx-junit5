@@ -19,7 +19,7 @@ import io.reactivex.Single;
 import io.reactivex.functions.Consumer;
 import io.vertx.junit5.VertxTestContext;
 
-public interface RequestUtil {
+public final class RequestUtil {
 
   /**
    * Safely execute onError handler on given result, passing checks to given test context
@@ -29,7 +29,7 @@ public interface RequestUtil {
    * @param onError result handler, can throw exceptions
    * @param <T> result type to process, irrelevant here
    */
-  static <T> void subscribeToResult_shouldFail(
+  public static <T> void subscribeToResult_shouldFail(
       VertxTestContext context, Single<T> result, Consumer<Throwable> onError) {
     result
         .doOnError(onError)
@@ -46,7 +46,7 @@ public interface RequestUtil {
    * @param assertions result handler, can throw exceptions
    * @param <T> result type to process, assertions must accept the same type
    */
-  static <T> void subscribeToResult_shouldSucceed(
+  public static <T> void subscribeToResult_shouldSucceed(
       VertxTestContext context, Single<T> result, Consumer<T> assertions) {
     result.doOnSuccess(assertions).subscribe(response -> context.completeNow(), context::failNow);
   }
@@ -60,7 +60,7 @@ public interface RequestUtil {
    * @param consummable object to process
    * @param <T> type of consummable to process
    */
-  static <T> void processWithContextVerification(
+  public static <T> void processWithContextVerification(
       VertxTestContext context, Consumer<T> consumer, T consummable) {
     context.verify(
         () -> {

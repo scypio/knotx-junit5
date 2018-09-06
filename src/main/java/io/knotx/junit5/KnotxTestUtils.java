@@ -31,6 +31,7 @@ public class KnotxTestUtils {
    * Read contents of resource and return as string. Ported from
    * io.knotx.junit.util.FileReader.readText(String) and fixed.
    *
+   * @deprecated use {@linkplain FileReader#readText(String)} instead
    * @param path resource path
    * @return resource contents
    * @throws IOException resource can not be read
