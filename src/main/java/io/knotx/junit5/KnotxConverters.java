@@ -19,6 +19,7 @@ import static org.mockito.Mockito.when;
 
 import io.knotx.dataobjects.Fragment;
 import io.knotx.fragments.SnippetPatterns;
+import io.knotx.junit5.util.FileReader;
 import io.knotx.options.SnippetOptions;
 import io.vertx.core.json.JsonObject;
 import java.io.IOException;
@@ -53,7 +54,7 @@ class KnotxConverters {
     final String[] params = fragmentParameters.split(PARAMETER_SEPARATOR_REGEX);
     final String fragmentContentFile = params[0];
     final String snippetTagName = extractSnippetTagName(params);
-    final String fragmentContent = KnotxTestUtils.readText(fragmentContentFile);
+    final String fragmentContent = FileReader.readText(fragmentContentFile);
     final String snippetParamPrefix = extractSnippetParamPrefix(params, fragmentParameters);
     final SnippetPatterns patterns =
         new SnippetPatterns(buildOptions(snippetTagName, snippetParamPrefix));

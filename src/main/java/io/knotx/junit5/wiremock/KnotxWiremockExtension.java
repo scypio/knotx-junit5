@@ -16,32 +16,63 @@
 package io.knotx.junit5.wiremock;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.client.MappingBuilder;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.Options;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 import io.knotx.junit5.KnotxBaseExtension;
 import io.knotx.junit5.KnotxExtension;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Optional;
+import java.util.concurrent.locks.ReentrantLock;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
-import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ExtensionContext.Store;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
+import org.junit.jupiter.api.extension.TestInstancePostProcessor;
 
 /**
  * Manages {@linkplain WireMockServer} instances for parameter and field injection. Standalone
  * extension, can be used separately from {@linkplain KnotxExtension}.
  */
 public class KnotxWiremockExtension extends KnotxBaseExtension
-    implements ParameterResolver, BeforeAllCallback, AfterAllCallback, AfterEachCallback {
+    implements ParameterResolver, TestInstancePostProcessor, AfterAllCallback, AfterEachCallback {
 
-  private static final String WIREMOCK_INSTANCES_MAP_STORE_KEY = "WiremockInstancesMap";
+  private static final String WIREMOCK_SERVER_INSTANCES_MAP_STORE_KEY =
+      "WiremockServerInstancesMap";
+
+  private static final ReentrantLock wiremockMapLock = new ReentrantLock(true);
+  private static final HashMap<Integer, WireMock> wiremockMap = new HashMap<>();
+
+  /**
+   * Retrieve Wiremock for given port and add given mappings
+   *
+   * @see WireMock#stubFor(MappingBuilder)
+   * @param port on which server is configured
+   * @param mappingBuilder given mapping
+   * @return created mapping
+   */
+  public static StubMapping stubForPort(int port, MappingBuilder mappingBuilder) {
+    return getOrCreateWiremock(port).register(mappingBuilder);
+  }
+
+  /**
+   * Add given mappings for this server
+   *
+   * @see WireMock#stubFor(MappingBuilder)
+   * @param server to which add mapping
+   * @param mappingBuilder given mapping
+   * @return created mapping
+   */
+  public static StubMapping stubForServer(WireMockServer server, MappingBuilder mappingBuilder) {
+    return stubForPort(server.port(), mappingBuilder);
+  }
 
   @Override
   public boolean supportsParameter(
@@ -84,12 +115,14 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
 
   @Override
   public void afterAll(ExtensionContext context) throws Exception {
-    cleanupWiremock(context);
+    cleanupWiremockServers(context);
+    shutdownWiremock();
   }
 
   /** Sets up all annotated fields in test class */
   @Override
-  public void beforeAll(ExtensionContext context) throws Exception {
+  public void postProcessTestInstance(Object testInstance, ExtensionContext context)
+      throws Exception {
     Optional<Class<?>> testClass = context.getTestClass();
     if (!testClass.isPresent()) {
       return;
@@ -101,7 +134,7 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
         .filter(
             field ->
                 field.isAnnotationPresent(KnotxWiremock.class)
-                    && field.getDeclaringClass().equals(WireMockServer.class))
+                    && field.getType().equals(WireMockServer.class))
         .forEach(
             field -> {
               Store store = getStore(context);
@@ -110,8 +143,8 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
 
               field.setAccessible(true);
               try {
-                field.set(WireMockServer.class.newInstance(), server);
-              } catch (IllegalAccessException | InstantiationException e) {
+                field.set(testInstance, server);
+              } catch (IllegalAccessException | IllegalArgumentException e) {
                 throw new RuntimeException(
                     "Could not inject wiremock server into requested field", e);
               }
@@ -120,18 +153,37 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
 
   @Override
   public void afterEach(ExtensionContext context) throws Exception {
-    cleanupWiremock(context);
+    cleanupWiremockServers(context);
+  }
+
+  private static WireMock getOrCreateWiremock(int port) {
+    try {
+      wiremockMapLock.lock();
+
+      if (wiremockMap.containsKey(port)) {
+        return wiremockMap.get(port);
+      }
+
+      WireMock instance = new WireMock("localhost", port);
+
+      wiremockMap.put(port, instance);
+
+      return instance;
+    } finally {
+      wiremockMapLock.unlock();
+    }
   }
 
   private WireMockServer setupWiremockServer(KnotxWiremock knotxWiremock, Store store) {
     int port = knotxWiremock.port();
-    WiremockMap map = getWiremockMap(store);
+    WiremockServerMap map = getWiremockServerMap(store);
 
     if (map.containsKey(port)) {
       return map.get(port);
     }
 
     WireMockConfiguration config = new WireMockConfiguration();
+    config.extensions(new KnotxFileSource());
 
     if (port == Options.DYNAMIC_PORT) {
       config.dynamicPort();
@@ -143,16 +195,16 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
     server.start();
 
     port = server.port();
-    WireMock.configureFor("localhost", port);
+    getOrCreateWiremock(port);
     map.put(port, server);
 
     return server;
   }
 
   /** Cleanup known Wiremock instances */
-  private void cleanupWiremock(ExtensionContext context) {
+  private void cleanupWiremockServers(ExtensionContext context) {
     Store store = getStore(context);
-    WiremockMap instancesMap = getWiremockMap(store);
+    WiremockServerMap instancesMap = getWiremockServerMap(store);
 
     if (null != instancesMap) {
       instancesMap
@@ -162,17 +214,27 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
                 if (server.isRunning()) {
                   server.resetRequests();
                   server.resetToDefaultMappings();
-                  server.stop();
                 }
               });
       instancesMap.clear();
     }
   }
 
-  private WiremockMap getWiremockMap(Store store) {
-    return store.getOrComputeIfAbsent(
-        WIREMOCK_INSTANCES_MAP_STORE_KEY, o -> new WiremockMap(), WiremockMap.class);
+  private void shutdownWiremock() {
+    wiremockMapLock.lock();
+
+    wiremockMap.values().forEach(WireMock::shutdown);
+    wiremockMap.clear();
+
+    wiremockMapLock.unlock();
   }
 
-  private class WiremockMap extends HashMap<Integer, WireMockServer> {}
+  private WiremockServerMap getWiremockServerMap(Store store) {
+    return store.getOrComputeIfAbsent(
+        WIREMOCK_SERVER_INSTANCES_MAP_STORE_KEY,
+        o -> new WiremockServerMap(),
+        WiremockServerMap.class);
+  }
+
+  private class WiremockServerMap extends HashMap<Integer, WireMockServer> {}
 }

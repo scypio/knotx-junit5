@@ -15,28 +15,29 @@
  */
 package io.knotx.junit5;
 
-import com.google.common.io.Resources;
+import io.knotx.junit5.util.FileReader;
 import io.reactivex.Observable;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.reactivex.core.http.HttpClient;
 import io.vertx.reactivex.core.http.HttpClientRequest;
 import io.vertx.reactivex.core.http.HttpClientResponse;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.function.Consumer;
 
+@Deprecated
 public class KnotxTestUtils {
 
   /**
    * Read contents of resource and return as string. Ported from
    * io.knotx.junit.util.FileReader.readText(String) and fixed.
    *
+   * @deprecated use {@linkplain FileReader#readText(String)} instead
    * @param path resource path
    * @return resource contents
    * @throws IOException resource can not be read
    */
   public static String readText(String path) throws IOException {
-    return Resources.toString(Resources.getResource(path), StandardCharsets.UTF_8);
+    return FileReader.readText(path);
   }
 
   /**
@@ -64,6 +65,5 @@ public class KnotxTestUtils {
           resp.subscribe(subscriber);
           requestBuilder.accept(request);
           request.end();
-        });
-  }
+        });  }
 }
