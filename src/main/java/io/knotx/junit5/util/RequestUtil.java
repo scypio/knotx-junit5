@@ -15,7 +15,6 @@
  */
 package io.knotx.junit5.util;
 
-import io.knotx.dataobjects.ClientResponse;
 import io.reactivex.Observable;
 import io.reactivex.Single;
 import io.reactivex.functions.Consumer;
@@ -61,8 +60,8 @@ public interface RequestUtil {
    * @param result to which subscribe
    * @param onError result handler, can throw exceptions
    */
-  static void subscribeToResult_shouldFail(
-      VertxTestContext context, Single<ClientResponse> result, Consumer<Throwable> onError) {
+  static <T> void subscribeToResult_shouldFail(
+      VertxTestContext context, Single<T> result, Consumer<Throwable> onError) {
     result
         .doOnError(onError)
         .subscribe(
@@ -77,8 +76,8 @@ public interface RequestUtil {
    * @param result to which subscribe
    * @param onSuccess result handler, can throw exceptions
    */
-  static void subscribeToResult_shouldSucceed(
-      VertxTestContext context, Single<ClientResponse> result, Consumer<ClientResponse> onSuccess) {
+  static <T> void subscribeToResult_shouldSucceed(
+      VertxTestContext context, Single<T> result, Consumer<T> onSuccess) {
     result
         .doOnSuccess(onSuccess)
         .subscribe(
