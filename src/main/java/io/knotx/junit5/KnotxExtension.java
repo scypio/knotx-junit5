@@ -15,7 +15,6 @@
  */
 package io.knotx.junit5;
 
-import com.google.common.collect.Lists;
 import io.knotx.junit5.wiremock.KnotxWiremock;
 import io.knotx.junit5.wiremock.KnotxWiremockExtension;
 import io.knotx.launcher.KnotxStarterVerticle;
@@ -30,6 +29,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
@@ -245,12 +245,13 @@ public class KnotxExtension extends KnotxBaseExtension
   private DeploymentOptions createConfig(String[] paths) {
     JsonObject storesConfig = new ConfigRetrieverOptions()
         .setStores(
-            Lists.newArrayList(Stream.of(paths).map(path ->
-                new ConfigStoreOptions()
-                    .setType("file")
-                    .setFormat(getConfigFormat(path))
-                    .setConfig(new JsonObject().put("path", path))).iterator()
-            )
+            Stream.of(paths)
+                .map(path ->
+                    new ConfigStoreOptions()
+                        .setType("file")
+                        .setFormat(getConfigFormat(path))
+                        .setConfig(new JsonObject().put("path", path)))
+                .collect(Collectors.toList())
         )
         .toJson();
     return new DeploymentOptions()
