@@ -15,43 +15,11 @@
  */
 package io.knotx.junit5.util;
 
-import io.reactivex.Observable;
 import io.reactivex.Single;
 import io.reactivex.functions.Consumer;
-import io.vertx.core.http.HttpMethod;
 import io.vertx.junit5.VertxTestContext;
-import io.vertx.reactivex.core.http.HttpClient;
-import io.vertx.reactivex.core.http.HttpClientRequest;
-import io.vertx.reactivex.core.http.HttpClientResponse;
 
 public interface RequestUtil {
-  /**
-   * Generate reactivex async request for given resource parameters
-   *
-   * @param client Vert.x client
-   * @param method target HTTP method
-   * @param port target port
-   * @param domain target domain
-   * @param uri resource to request
-   * @param requestBuilder handler for request body and params
-   * @return reactivex wrapper
-   */
-  static Observable<HttpClientResponse> asyncRequest(
-      HttpClient client,
-      HttpMethod method,
-      int port,
-      String domain,
-      String uri,
-      java.util.function.Consumer<HttpClientRequest> requestBuilder) {
-    return Observable.unsafeCreate(
-        subscriber -> {
-          HttpClientRequest request = client.request(method, port, domain, uri);
-          Observable<HttpClientResponse> resp = request.toObservable();
-          resp.subscribe(subscriber);
-          requestBuilder.accept(request);
-          request.end();
-        });
-  }
 
   /**
    * Safely execute onError handler on given result, passing checks to given test context
@@ -59,6 +27,7 @@ public interface RequestUtil {
    * @param context test context
    * @param result to which subscribe
    * @param onError result handler, can throw exceptions
+   * @param <T> result type to process, irrelevant here
    */
   static <T> void subscribeToResult_shouldFail(
       VertxTestContext context, Single<T> result, Consumer<Throwable> onError) {
@@ -70,20 +39,27 @@ public interface RequestUtil {
   }
 
   /**
-   * Safely execute onSuccess handler on given result, passing checks to given test context
+   * Safely execute assertions on given result, passing checks to given test context
    *
    * @param context test context
    * @param result to which subscribe
-   * @param onSuccess result handler, can throw exceptions
+   * @param assertions result handler, can throw exceptions
+   * @param <T> result type to process, assertions must accept the same type
    */
   static <T> void subscribeToResult_shouldSucceed(
-      VertxTestContext context, Single<T> result, Consumer<T> onSuccess) {
-    result
-        .doOnSuccess(onSuccess)
-        .subscribe(
-            response -> context.completeNow(), context::failNow);
+      VertxTestContext context, Single<T> result, Consumer<T> assertions) {
+    result.doOnSuccess(assertions).subscribe(response -> context.completeNow(), context::failNow);
   }
 
+  /**
+   * Verfify that consumer doesn't error out when it accepts given consummable. Context is notified
+   * both in case of failure and success.
+   *
+   * @param context test context
+   * @param consumer which will accept consummable
+   * @param consummable object to process
+   * @param <T> type of consummable to process
+   */
   static <T> void processWithContextVerification(
       VertxTestContext context, Consumer<T> consumer, T consummable) {
     context.verify(
