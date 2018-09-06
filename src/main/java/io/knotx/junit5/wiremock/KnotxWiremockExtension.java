@@ -48,7 +48,7 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
       "WiremockServerInstancesMap";
 
   private static final ReentrantLock wiremockMapLock = new ReentrantLock(true);
-  private static final WiremockMap wiremockMap = new WiremockMap();
+  private static final HashMap<Integer, WireMock> wiremockMap = new HashMap<>();
 
   /**
    * Retrieve Wiremock for given port and add given mappings
@@ -183,6 +183,7 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
     }
 
     WireMockConfiguration config = new WireMockConfiguration();
+    config.extensions(new KnotxFileSource());
 
     if (port == Options.DYNAMIC_PORT) {
       config.dynamicPort();
@@ -234,8 +235,6 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
         o -> new WiremockServerMap(),
         WiremockServerMap.class);
   }
-
-  private static class WiremockMap extends HashMap<Integer, WireMock> {}
 
   private class WiremockServerMap extends HashMap<Integer, WireMockServer> {}
 }
