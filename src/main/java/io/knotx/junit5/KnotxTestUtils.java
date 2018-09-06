@@ -15,16 +15,17 @@
  */
 package io.knotx.junit5;
 
-import com.google.common.io.Resources;
+import io.knotx.junit5.util.FileReader;
+import io.knotx.junit5.util.RequestUtil;
 import io.reactivex.Observable;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.reactivex.core.http.HttpClient;
 import io.vertx.reactivex.core.http.HttpClientRequest;
 import io.vertx.reactivex.core.http.HttpClientResponse;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.function.Consumer;
 
+@Deprecated
 public class KnotxTestUtils {
 
   /**
@@ -36,19 +37,11 @@ public class KnotxTestUtils {
    * @throws IOException resource can not be read
    */
   public static String readText(String path) throws IOException {
-    return Resources.toString(Resources.getResource(path), StandardCharsets.UTF_8);
+    return FileReader.readText(path);
   }
 
   /**
-   * Generate reactivex async request for given resource parameters
-   *
-   * @param client Vert.x client
-   * @param method target HTTP method
-   * @param port target port
-   * @param domain target domain
-   * @param uri resource to request
-   * @param requestBuilder handler for request body and params
-   * @return reactivex wrapper
+   * Use this instead: {@linkplain RequestUtil#asyncRequest(HttpClient, HttpMethod, int, String, String, Consumer)}
    */
   public static Observable<HttpClientResponse> asyncRequest(
       HttpClient client,
@@ -57,13 +50,6 @@ public class KnotxTestUtils {
       String domain,
       String uri,
       Consumer<HttpClientRequest> requestBuilder) {
-    return Observable.unsafeCreate(
-        subscriber -> {
-          HttpClientRequest request = client.request(method, port, domain, uri);
-          Observable<HttpClientResponse> resp = request.toObservable();
-          resp.subscribe(subscriber);
-          requestBuilder.accept(request);
-          request.end();
-        });
+    return RequestUtil.asyncRequest(client, method, port, domain, uri, requestBuilder);
   }
 }

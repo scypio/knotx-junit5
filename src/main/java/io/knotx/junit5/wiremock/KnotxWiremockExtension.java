@@ -16,15 +16,18 @@
 package io.knotx.junit5.wiremock;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.client.MappingBuilder;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.Options;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 import io.knotx.junit5.KnotxBaseExtension;
 import io.knotx.junit5.KnotxExtension;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Optional;
+import java.util.concurrent.locks.ReentrantLock;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
@@ -41,7 +44,11 @@ import org.junit.jupiter.api.extension.ParameterResolver;
 public class KnotxWiremockExtension extends KnotxBaseExtension
     implements ParameterResolver, BeforeAllCallback, AfterAllCallback, AfterEachCallback {
 
-  private static final String WIREMOCK_INSTANCES_MAP_STORE_KEY = "WiremockInstancesMap";
+  private static final String WIREMOCK_SERVER_INSTANCES_MAP_STORE_KEY =
+      "WiremockServerInstancesMap";
+
+  private static final ReentrantLock wiremockMapLock = new ReentrantLock(true);
+  private static final WiremockMap wiremockMap = new WiremockMap();
 
   @Override
   public boolean supportsParameter(
@@ -123,9 +130,13 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
     cleanupWiremock(context);
   }
 
+  public static StubMapping stubForPort(int port, MappingBuilder mappingBuilder) {
+    return getOrCreateWiremock(port).register(mappingBuilder);
+  }
+
   private WireMockServer setupWiremockServer(KnotxWiremock knotxWiremock, Store store) {
     int port = knotxWiremock.port();
-    WiremockMap map = getWiremockMap(store);
+    WiremockServerMap map = getWiremockServerMap(store);
 
     if (map.containsKey(port)) {
       return map.get(port);
@@ -143,16 +154,31 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
     server.start();
 
     port = server.port();
-    WireMock.configureFor("localhost", port);
+    getOrCreateWiremock(port);
     map.put(port, server);
 
     return server;
   }
 
+  private static WireMock getOrCreateWiremock(int port) {
+    if (wiremockMap.containsKey(port)) {
+      return wiremockMap.get(port);
+    }
+
+    wiremockMapLock.lock();
+
+    WireMock instance = new WireMock("localhost", port);
+    wiremockMap.put(port, instance);
+
+    wiremockMapLock.unlock();
+
+    return instance;
+  }
+
   /** Cleanup known Wiremock instances */
   private void cleanupWiremock(ExtensionContext context) {
     Store store = getStore(context);
-    WiremockMap instancesMap = getWiremockMap(store);
+    WiremockServerMap instancesMap = getWiremockServerMap(store);
 
     if (null != instancesMap) {
       instancesMap
@@ -167,12 +193,23 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
               });
       instancesMap.clear();
     }
+
+    wiremockMapLock.lock();
+
+    wiremockMap.values().forEach(WireMock::shutdown);
+    wiremockMap.clear();
+
+    wiremockMapLock.unlock();
   }
 
-  private WiremockMap getWiremockMap(Store store) {
+  private WiremockServerMap getWiremockServerMap(Store store) {
     return store.getOrComputeIfAbsent(
-        WIREMOCK_INSTANCES_MAP_STORE_KEY, o -> new WiremockMap(), WiremockMap.class);
+        WIREMOCK_SERVER_INSTANCES_MAP_STORE_KEY,
+        o -> new WiremockServerMap(),
+        WiremockServerMap.class);
   }
 
-  private class WiremockMap extends HashMap<Integer, WireMockServer> {}
+  private class WiremockServerMap extends HashMap<Integer, WireMockServer> {}
+
+  private static class WiremockMap extends HashMap<Integer, WireMock> {}
 }

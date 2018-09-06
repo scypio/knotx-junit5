@@ -15,18 +15,31 @@
  */
 package io.knotx.junit5.util;
 
-import com.google.common.io.CharStreams;
 import com.google.common.io.Resources;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 
 public interface FileReader {
 
+  /**
+   * Read contents of resource and return as string. Ported from
+   * io.knotx.junit.util.FileReader.readText(String) and fixed.
+   *
+   * @param path resource path
+   * @return resource contents
+   * @throws IOException resource can not be read
+   */
   static String readText(String path) throws IOException {
-    return CharStreams
-        .toString(new InputStreamReader(Resources.getResource(path).openStream(), "utf-8"));
+    return Resources.toString(Resources.getResource(path), StandardCharsets.UTF_8);
   }
 
+  /**
+   * Same as {@linkplain #readText(String)}, but throws unchecked exception instead
+   *
+   * @param path resource path
+   * @return resource contents
+   * @throws IllegalArgumentException on IOException
+   */
   static String readTextSafe(String path) {
     try {
       return readText(path);
@@ -34,5 +47,4 @@ public interface FileReader {
       throw new IllegalArgumentException("Could not load text from [" + path + "]");
     }
   }
-
 }
