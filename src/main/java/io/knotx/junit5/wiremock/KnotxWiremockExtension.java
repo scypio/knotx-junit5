@@ -161,18 +161,21 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
   }
 
   private static WireMock getOrCreateWiremock(int port) {
-    if (wiremockMap.containsKey(port)) {
-      return wiremockMap.get(port);
+    try {
+      wiremockMapLock.lock();
+
+      if (wiremockMap.containsKey(port)) {
+        return wiremockMap.get(port);
+      }
+
+      WireMock instance = new WireMock("localhost", port);
+
+      wiremockMap.put(port, instance);
+
+      return instance;
+    } finally {
+      wiremockMapLock.unlock();
     }
-
-    wiremockMapLock.lock();
-
-    WireMock instance = new WireMock("localhost", port);
-    wiremockMap.put(port, instance);
-
-    wiremockMapLock.unlock();
-
-    return instance;
   }
 
   /** Cleanup known Wiremock instances */
