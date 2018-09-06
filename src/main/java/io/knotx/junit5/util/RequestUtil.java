@@ -21,6 +21,9 @@ import io.vertx.junit5.VertxTestContext;
 
 public final class RequestUtil {
 
+  /** Util class - no instantiation */
+  private RequestUtil() {}
+
   /**
    * Safely execute onError handler on given result, passing checks to given test context
    *
