@@ -219,6 +219,7 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
     wiremockServerMap.forEach((port, server) -> server.shutdown());
     wiremockServerMap.clear();
     wiremockMap.clear();
+    serviceNamePortMap.clear();
 
     try { //FIXME: REMOVE THIS BULLSHIT
       Thread.sleep(500);
