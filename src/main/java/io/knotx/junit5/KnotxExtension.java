@@ -25,11 +25,11 @@ import io.vertx.core.Vertx;
 import io.vertx.core.VertxException;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
+import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
@@ -49,21 +49,21 @@ import org.junit.jupiter.api.extension.TestInstancePostProcessor;
  * Injects and manages instances of:
  *
  * <ul>
- * <li>{@linkplain io.vertx.core.Vertx}, with Knot.x config injection via {@linkplain
- * KnotxApplyConfiguration}
- * <li>{@linkplain io.vertx.reactivex.core.Vertx}, same as above
- * <li>{@linkplain com.github.tomakehurst.wiremock.WireMockServer} when annotated with {@linkplain
- * KnotxWiremock}
+ *   <li>{@linkplain io.vertx.core.Vertx}, with Knot.x config injection via {@linkplain
+ *       KnotxApplyConfiguration}
+ *   <li>{@linkplain io.vertx.reactivex.core.Vertx}, same as above
+ *   <li>{@linkplain com.github.tomakehurst.wiremock.WireMockServer} when annotated with {@linkplain
+ *       KnotxWiremock}
  * </ul>
  */
 public class KnotxExtension extends KnotxBaseExtension
     implements ParameterResolver,
-    BeforeEachCallback,
-    AfterEachCallback,
-    AfterTestExecutionCallback,
-    BeforeTestExecutionCallback,
-    AfterAllCallback,
-    TestInstancePostProcessor {
+        BeforeEachCallback,
+        AfterEachCallback,
+        AfterTestExecutionCallback,
+        BeforeTestExecutionCallback,
+        AfterAllCallback,
+        TestInstancePostProcessor {
 
   private static final long DEFAULT_TIMEOUT_SECONDS = 30;
   private static final String VERTX_INSTANCE_STORE_KEY = "VertxInstance";
@@ -124,7 +124,6 @@ public class KnotxExtension extends KnotxBaseExtension
   public void afterEach(ExtensionContext context) throws Exception {
     vertxExtension.afterEach(context);
     cleanupOurVertxes(context);
-    wiremockExtension.afterEach(context);
   }
 
   @Override
@@ -213,9 +212,7 @@ public class KnotxExtension extends KnotxBaseExtension
     }
   }
 
-  /**
-   * Load Knot.x config from given resource and apply it to Vertx instance
-   */
+  /** Load Knot.x config from given resource and apply it to Vertx instance */
   private void loadKnotxConfig(Vertx vertx, KnotxApplyConfiguration knotxConfig) {
     if (knotxConfig == null) {
       throw new IllegalArgumentException(
@@ -225,7 +222,7 @@ public class KnotxExtension extends KnotxBaseExtension
     CompletableFuture<Void> toComplete = new CompletableFuture<>();
 
     vertx.deployVerticle(
-        KnotxStarterVerticle.class.getName(),
+        KnotxStarterVerticle.class,
         createConfig(knotxConfig.value()),
         ar -> {
           if (ar.succeeded()) {
@@ -244,36 +241,32 @@ public class KnotxExtension extends KnotxBaseExtension
   }
 
   private DeploymentOptions createConfig(String[] paths) {
-    ConfigRetrieverOptions configRetrieverOptions = new ConfigRetrieverOptions()
-        .setStores(
-            Stream.of(paths)
-                .map(path ->
-                    new ConfigStoreOptions()
-                        .setType("file")
-                        .setFormat(getConfigFormat(path))
-                        .setConfig(new JsonObject().put("path", path)))
-                .collect(Collectors.toList())
-        );
+    ConfigRetrieverOptions retrieverOptions = new ConfigRetrieverOptions();
 
-    //todo add overrides from wiremock ext
+    Stream.of(paths).forEach(this::guardConfigFormat);
 
-    JsonObject storesConfig = configRetrieverOptions.toJson();
+    JsonObject config = new JsonObject();
+
+    config.put("paths", Arrays.asList(paths));
+    config.put("overrides", wiremockExtension.getConfigOverrides());
+
+    retrieverOptions.addStore(
+        new ConfigStoreOptions()
+            .setType("json")
+            .setFormat("knotx")
+            .setOptional(false)
+            .setConfig(config));
+
+    JsonObject storesConfig = retrieverOptions.toJson();
     return new DeploymentOptions()
-        .setConfig(
-            new JsonObject()
-                .put(
-                    "configRetrieverOptions",
-                    storesConfig));
+        .setConfig(new JsonObject().put("configRetrieverOptions", storesConfig));
   }
 
-  private String getConfigFormat(String path) {
+  private void guardConfigFormat(String path) {
     String extension = path.substring(path.lastIndexOf('.') + 1);
-    if ("conf".equals(extension)) {
-      return "hocon";
-    } else if ("json".equals(extension)) {
-      return "json";
-    } else {
-      throw new IllegalArgumentException("Configuration file format not supported!");
+    if (!"conf".equals(extension) && !"json".equals(extension)) {
+      throw new IllegalArgumentException(
+          "Configuration file format not supported for path '" + path + "'");
     }
   }
 }

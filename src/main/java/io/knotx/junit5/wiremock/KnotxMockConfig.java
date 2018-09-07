@@ -23,35 +23,42 @@ class KnotxMockConfig {
   public static final int RANDOM_PORT = Options.DYNAMIC_PORT;
 
   final String name;
-  final int port;
   final String requestPath;
   final String mimetype;
+  final int port;
 
-  public KnotxMockConfig(String name, int port, String requestPath, String mimetype) {
+  KnotxMockConfig(String name, int port, String requestPath, String mimetype) {
     this.name = name;
     this.port = port;
     this.requestPath = requestPath;
     this.mimetype = mimetype;
   }
 
-  public KnotxMockConfig(String name, int port, String requestPath) {
+  KnotxMockConfig(String name, int port, String requestPath) {
     this.name = name;
     this.port = port;
     this.requestPath = requestPath;
     this.mimetype = MIMETYPE_AUTODETECT;
   }
 
-  public KnotxMockConfig(String name, int port) {
+  KnotxMockConfig(String name, int port) {
     this.name = name;
     this.port = port;
     this.requestPath = PATH_INHERIT;
     this.mimetype = MIMETYPE_AUTODETECT;
   }
 
-  public KnotxMockConfig(String name) {
+  KnotxMockConfig(String name) {
     this.name = name;
     this.port = RANDOM_PORT;
     this.requestPath = PATH_INHERIT;
     this.mimetype = MIMETYPE_AUTODETECT;
+  }
+
+  KnotxMockConfig(KnotxMockConfig parent, int newPort) {
+    this.name = parent.name;
+    this.port = newPort;
+    this.requestPath = parent.requestPath;
+    this.mimetype = parent.mimetype;
   }
 }
