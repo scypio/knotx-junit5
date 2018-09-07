@@ -34,7 +34,6 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.AfterTestExecutionCallback;
-import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.BeforeTestExecutionCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -64,7 +63,6 @@ public class KnotxExtension extends KnotxBaseExtension
     AfterTestExecutionCallback,
     BeforeTestExecutionCallback,
     AfterAllCallback,
-    BeforeAllCallback,
     TestInstancePostProcessor {
 
   private static final long DEFAULT_TIMEOUT_SECONDS = 30;
@@ -102,10 +100,6 @@ public class KnotxExtension extends KnotxBaseExtension
     }
 
     return vertxExtension.resolveParameter(parameterContext, extensionContext);
-  }
-
-  @Override
-  public void beforeAll(ExtensionContext context) throws Exception {
   }
 
   @Override
@@ -250,7 +244,7 @@ public class KnotxExtension extends KnotxBaseExtension
   }
 
   private DeploymentOptions createConfig(String[] paths) {
-    JsonObject storesConfig = new ConfigRetrieverOptions()
+    ConfigRetrieverOptions configRetrieverOptions = new ConfigRetrieverOptions()
         .setStores(
             Stream.of(paths)
                 .map(path ->
@@ -259,8 +253,11 @@ public class KnotxExtension extends KnotxBaseExtension
                         .setFormat(getConfigFormat(path))
                         .setConfig(new JsonObject().put("path", path)))
                 .collect(Collectors.toList())
-        )
-        .toJson();
+        );
+
+    //todo add overrides from wiremock ext
+
+    JsonObject storesConfig = configRetrieverOptions.toJson();
     return new DeploymentOptions()
         .setConfig(
             new JsonObject()
