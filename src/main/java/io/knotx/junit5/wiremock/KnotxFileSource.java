@@ -20,7 +20,10 @@ import com.github.tomakehurst.wiremock.extension.Parameters;
 import com.github.tomakehurst.wiremock.extension.ResponseTransformer;
 import com.github.tomakehurst.wiremock.http.Request;
 import com.github.tomakehurst.wiremock.http.Response;
+import com.github.tomakehurst.wiremock.http.Response.Builder;
 import io.knotx.junit5.util.FileReader;
+import java.net.MalformedURLException;
+import java.net.URL;
 import org.apache.commons.lang3.StringUtils;
 
 /** Fix for WireMock's inability to deliver files from resources without appending various info */
@@ -29,12 +32,19 @@ class KnotxFileSource extends ResponseTransformer {
   @Override
   public Response transform(
       Request request, Response response, FileSource files, Parameters parameters) {
-    String requestPath = request.getUrl();
+    String requestPath;
+
+    try {
+      requestPath = new URL(request.getAbsoluteUrl()).getPath();
+    } catch (MalformedURLException e) {
+      throw new IllegalStateException("Malformed request URL", e);
+    }
+
     requestPath = StringUtils.removeStart(requestPath, "/");
 
     String body = FileReader.readTextSafe(requestPath);
 
-    return Response.Builder.like(response).body(body).build();
+    return Builder.like(response).body(body).build();
   }
 
   @Override
