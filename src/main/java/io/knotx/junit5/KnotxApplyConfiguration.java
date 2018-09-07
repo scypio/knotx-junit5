@@ -22,9 +22,7 @@ import java.lang.annotation.Target;
 
 /**
  * Specifies Knot.x configuration path. More details about Knot.x configuration can be found <a
- * href="https://github.com/Cognifide/knotx/wiki/Configuration">here</a>.
- *
- * TODO add documentation how to override default configurations
+ * href="https://github.com/Cognifide/knotx/wiki/Configuration">here</a>. and README.md.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
