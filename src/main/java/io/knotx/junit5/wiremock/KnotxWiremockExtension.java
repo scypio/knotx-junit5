@@ -111,16 +111,13 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
   }
 
   @Override
-  public void afterAll(ExtensionContext context) throws Exception {
+  public void afterAll(ExtensionContext context) {
     shutdownWiremock();
   }
 
-  /**
-   * Sets up all annotated fields in test class
-   */
+  /** Sets up all annotated fields in test class */
   @Override
-  public void postProcessTestInstance(Object testInstance, ExtensionContext context)
-      throws Exception {
+  public void postProcessTestInstance(Object testInstance, ExtensionContext context) {
     Optional<Class<?>> testClass = context.getTestClass();
     if (!testClass.isPresent()) {
       return;
@@ -178,7 +175,7 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
     try {
       wiremockMapLock.lock();
 
-      //rule: same name == same config, so was created before
+      // rule: same name == same config, so was created before
       if (serviceNamePortMap.containsKey(name)) {
         return wiremockServerMap.get(serviceNamePortMap.get(name).port);
       }
@@ -215,16 +212,11 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
   private void shutdownWiremock() {
     wiremockMapLock.lock();
 
-    //calling WireMock.shutdown() would shutdown only the default instance
+    // calling WireMock.shutdown() would shutdown only the default instance
     wiremockServerMap.forEach((port, server) -> server.shutdown());
     wiremockServerMap.clear();
     wiremockMap.clear();
     serviceNamePortMap.clear();
-
-    try { //FIXME: REMOVE THIS BULLSHIT
-      Thread.sleep(500);
-    } catch (InterruptedException ignore) {
-    }
 
     wiremockMapLock.unlock();
   }
@@ -237,17 +229,13 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
 
       serviceNamePortMap.values().forEach(
           config -> serversConfig.put(config.name,
-              ImmutableMap.of("port", config.port)));
+              ImmutableMap.of("port", config.port))
+      );
     } finally {
       wiremockMapLock.unlock();
     }
 
-    Map<String, Object> map =
-        ImmutableMap.of("test",
-            ImmutableMap.of("wiremock",
-                serversConfig
-            )
-        );
+    Map<String, Object> map = ImmutableMap.of("test", ImmutableMap.of("wiremock", serversConfig));
     return new JsonObject(map);
   }
 }
