@@ -28,13 +28,17 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Vert.x ConfigProcessor implementation for Knot.x test purposes. Allows to use hierarchical
  * structure when loading Knot.x configurations rather than loading them as files completely
  * independent from each other.<br>
  * <br>
- * Used internally in {@linkplain KnotxExtension} to override ports retrieved from {@linkplain KnotxWiremockExtension}.
+ * Used internally in {@linkplain KnotxExtension} to override ports retrieved from {@linkplain
+ * KnotxWiremockExtension}.
  */
 public class KnotxConcatConfigProcessor implements ConfigProcessor {
 
@@ -51,28 +55,27 @@ public class KnotxConcatConfigProcessor implements ConfigProcessor {
       Handler<AsyncResult<JsonObject>> handler) {
     vertx.executeBlocking(
         future -> {
-          JsonArray paths = configuration.getJsonArray("paths");
-          JsonObject overrides = configuration.getJsonObject("overrides");
+          JsonArray paths =
+              Optional.of(configuration.getJsonArray("paths")).orElse(new JsonArray());
+          JsonObject overrides =
+              Optional.of(configuration.getJsonObject("overrides")).orElse(new JsonObject());
 
           // configurations are stored in order of overriding - base first, overrides last
-          ArrayList<String> configs = new ArrayList<>();
+          List<String> configs = new ArrayList<>();
           try {
             // load user configurations
-            for (Object o : paths) {
-              String path = String.valueOf(o);
-              String value = vertx.fileSystem().readFileBlocking(path).toString();
+            configs = paths.stream()
+                .map(String::valueOf)
+                .map(s -> vertx.fileSystem().readFileBlocking(s).toString())
+                .collect(Collectors.toList());
 
-              configs.add(value);
-            }
-
-            // add overrides
-            configs.add(overrides.encode());
-
-            // put overrides first
+            // put base files as last
             Collections.reverse(configs);
 
-            Config fullConfig = ConfigFactory.empty();
+            // overrides first
+            Config fullConfig = ConfigFactory.parseString(overrides.encode());
 
+            // rest of files as fallbacks
             for (String reader : configs) {
               fullConfig = fullConfig.withFallback(ConfigFactory.parseString(reader));
             }

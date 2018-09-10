@@ -68,6 +68,9 @@ public class KnotxExtension extends KnotxBaseExtension
   private static final long DEFAULT_TIMEOUT_SECONDS = 30;
   private static final String VERTX_INSTANCE_STORE_KEY = "VertxInstance";
 
+  private static final String HOCON_EXTENSION = "conf";
+  private static final String JSON_EXTENSION = "json";
+
   private final VertxExtension vertxExtension = new VertxExtension();
   private final KnotxWiremockExtension wiremockExtension = new KnotxWiremockExtension();
 
@@ -216,7 +219,7 @@ public class KnotxExtension extends KnotxBaseExtension
   private void loadKnotxConfig(Vertx vertx, KnotxApplyConfiguration knotxConfig) {
     if (knotxConfig == null) {
       throw new IllegalArgumentException(
-          "Missing @KnotxApplyConfiguration annotation with the path to configuration JSON");
+          "Missing @KnotxApplyConfiguration annotation with the path to configuration files");
     }
 
     CompletableFuture<Void> toComplete = new CompletableFuture<>();
@@ -264,7 +267,7 @@ public class KnotxExtension extends KnotxBaseExtension
 
   private void guardConfigFormat(String path) {
     String extension = path.substring(path.lastIndexOf('.') + 1);
-    if (!"conf".equals(extension) && !"json".equals(extension)) {
+    if (!HOCON_EXTENSION.equals(extension) && !JSON_EXTENSION.equals(extension)) {
       throw new IllegalArgumentException(
           "Configuration file format not supported for path '" + path + "'");
     }
