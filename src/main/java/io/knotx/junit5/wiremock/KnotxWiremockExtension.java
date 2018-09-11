@@ -25,7 +25,6 @@ import io.knotx.junit5.KnotxBaseExtension;
 import io.knotx.junit5.KnotxExtension;
 import io.vertx.core.json.JsonObject;
 import java.lang.reflect.Field;
-import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -105,7 +104,7 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
               .findAnnotation(KnotxWiremock.class)
               .orElseThrow(IllegalStateException::new);
 
-      String name = getNameForParameter(parameterContext.getParameter());
+      String name = getServerName(extensionContext, parameterContext);
 
       return setupWiremockServer(name, knotxWiremock);
     }
@@ -135,7 +134,7 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
                     && field.getType().equals(WireMockServer.class))
         .forEach(
             field -> {
-              String name = getNameForField(field);
+              String name = getServerName(context, field);
               WireMockServer server =
                   setupWiremockServer(name, field.getAnnotation(KnotxWiremock.class));
 
@@ -147,6 +146,14 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
                     "Could not inject wiremock server into requested field", e);
               }
             });
+  }
+
+  private String getServerName(ExtensionContext context, Field field) {
+    return getClassName(context) + field.getName();
+  }
+
+  private String getServerName(ExtensionContext context, ParameterContext parameterContext) {
+    return getClassName(context) + parameterContext.getParameter().getName();
   }
 
   private static WireMock getOrCreateWiremock(int port) {
@@ -165,14 +172,6 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
     } finally {
       wiremockMapLock.unlock();
     }
-  }
-
-  private String getNameForParameter(Parameter parameter) {
-    return parameter.getDeclaringExecutable().getDeclaringClass().getName() + ":" + parameter.getName();
-  }
-
-  private String getNameForField(Field field) {
-    return field.getDeclaringClass().getName() + ":" + field.getName();
   }
 
   private WireMockServer setupWiremockServer(String name, KnotxWiremock knotxWiremock) {
@@ -233,16 +232,22 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
     wiremockMapLock.unlock();
   }
 
-  public JsonObject getConfigOverrides() {
+  public JsonObject getConfigOverrides(String forClass) {
     Map<String, Object> serversConfig = new HashMap<>();
 
     try {
       wiremockMapLock.lock();
 
-      serviceNamePortMap.values().forEach(
-          config -> serversConfig.put(config.name,
-              ImmutableMap.of("port", config.port))
-      );
+      // get entries for given class, trim class name for results
+      serviceNamePortMap
+          .values()
+          .stream()
+          .filter(config -> config.name.startsWith(forClass))
+          .forEach(
+              config -> {
+                String trimmed = config.name.substring(forClass.length());
+                serversConfig.put(trimmed, ImmutableMap.of("port", config.port));
+              });
     } finally {
       wiremockMapLock.unlock();
     }
