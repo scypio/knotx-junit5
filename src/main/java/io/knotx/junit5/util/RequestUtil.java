@@ -55,20 +55,20 @@ public final class RequestUtil {
   }
 
   /**
-   * Verfify that consumer doesn't error out when it accepts given consummable. Context is notified
+   * Verify that consumer doesn't error out when it accepts given consumable. Context is notified
    * both in case of failure and success.
    *
    * @param context test context
-   * @param consumer which will accept consummable
-   * @param consummable object to process
-   * @param <T> type of consummable to process
+   * @param consumer which will accept consumable
+   * @param consumable object to process
+   * @param <T> type of consumable to process
    */
   public static <T> void processWithContextVerification(
-      VertxTestContext context, Consumer<T> consumer, T consummable) {
+      VertxTestContext context, Consumer<T> consumer, T consumable) {
     context.verify(
         () -> {
           try {
-            consumer.accept(consummable);
+            consumer.accept(consumable);
 
             context.completeNow();
           } catch (Exception e) {

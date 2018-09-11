@@ -27,12 +27,17 @@ public class ExampleIntegrationTest {
 }
 ```
 
+See [Vert.x JUnit 5 integration](https://vertx.io/docs/vertx-junit5/java/) for guide
+how to interact with `VertxTestContext` instances. Also, under `io.knotx.junit5.util.RequestUtil`
+there are some common methods that should make working with Vert.x tests contexts easier.
+
 #### @KnotxApplyConfiguration
 
 The annotation allows to specify one and more Knot.x configuration(s) to load for given test.
 It accepts a paths array and loads all configuration entries using 
-[Vert.x Config](https://vertx.io/docs/vertx-config/java/) file stores (through a custom 
-implementation which fixes a few things; see section [KnotxConcatConfigProcessor](#KnotxConcatConfigProcessor)). 
+[Vert.x Config](https://vertx.io/docs/vertx-config/java/) file stores, through a custom 
+implementation enhanced with support for HOCON hierarchical configuration loading and cross-file
+variable references (for more details see section [KnotxConcatConfigProcessor](#KnotxConcatConfigProcessor) down below). 
 It supports two configuration semantics:
 
 - JSON (files with `json` extension)
@@ -164,7 +169,7 @@ Standalone WireMockServer injection and lifecycle management. Allows for:
 - Specifying on which port WireMockServer instance should be present,
 - If no port is specified on annotation, a random one will be assigned to given instance,
 - Running multiple mocked server instances,
-- Autoinjecting mocked servers' port numbers into Knot.x configuration (more details below).
+- Referencing mocked servers' port numbers in Knot.x configuration (more details below).
 
 ***Warning:*** if you use KnotxExtension, you **must not inject** KnotxWiremockExtension, 
 as the functionality of the latter gets auto-imported into the former.
@@ -219,7 +224,7 @@ and injected both into instance field and method parameter.
 
 With KnotxExtension, created WireMockServer instances' ports will be available 
 for referencing in Knot.x configuration under `test.wiremock.<wiremockserver_identifier>.port` variables
-(for HOCON syntax only).
+(HOCON syntax only).
 
 ### KnotxArgumentConverter
 
