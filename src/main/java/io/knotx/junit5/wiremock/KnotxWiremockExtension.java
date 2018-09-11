@@ -25,6 +25,7 @@ import io.knotx.junit5.KnotxBaseExtension;
 import io.knotx.junit5.KnotxExtension;
 import io.vertx.core.json.JsonObject;
 import java.lang.reflect.Field;
+import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -104,7 +105,9 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
               .findAnnotation(KnotxWiremock.class)
               .orElseThrow(IllegalStateException::new);
 
-      return setupWiremockServer(parameterContext.getParameter().getName(), knotxWiremock);
+      String name = getNameForParameter(parameterContext.getParameter());
+
+      return setupWiremockServer(name, knotxWiremock);
     }
 
     throw new IllegalStateException("This should not happen");
@@ -132,8 +135,9 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
                     && field.getType().equals(WireMockServer.class))
         .forEach(
             field -> {
+              String name = getNameForField(field);
               WireMockServer server =
-                  setupWiremockServer(field.getName(), field.getAnnotation(KnotxWiremock.class));
+                  setupWiremockServer(name, field.getAnnotation(KnotxWiremock.class));
 
               field.setAccessible(true);
               try {
@@ -161,6 +165,14 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
     } finally {
       wiremockMapLock.unlock();
     }
+  }
+
+  private String getNameForParameter(Parameter parameter) {
+    return parameter.getDeclaringExecutable().getDeclaringClass().getName() + ":" + parameter.getName();
+  }
+
+  private String getNameForField(Field field) {
+    return field.getDeclaringClass().getName() + ":" + field.getName();
   }
 
   private WireMockServer setupWiremockServer(String name, KnotxWiremock knotxWiremock) {

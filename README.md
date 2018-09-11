@@ -31,7 +31,7 @@ public class ExampleIntegrationTest {
 
 The annotation allows to specify one and more Knot.x configuration(s) to load for given test.
 It accepts a paths array and loads all configuration entries using 
-[Vert.x Config](https://vertx.io/docs/vertx-config/java/) file stores (though through a custom 
+[Vert.x Config](https://vertx.io/docs/vertx-config/java/) file stores (through a custom 
 implementation which fixes a few things; see section [KnotxConcatConfigProcessor](#KnotxConcatConfigProcessor)). 
 It supports two configuration semantics:
 
@@ -49,13 +49,98 @@ for more details.
 #### KnotxConcatConfigProcessor
 
 This implementation of Vert.x [ConfigProcessor](https://vertx.io/docs/vertx-config/java/#_extending_the_config_retriever)
-enables KnotxExtension to load Knot.x configuration files in a true hierarchical manner,
-including cross-file references to variables (only with HOCON files).
- 
-From a user standpoint, HOCON cross-references should be available out-of-box in Vert.x's processing of configurations, since when you load configs
-programatically, you provide a source for given file and its format, and only JSON and HOCON are supported so it would be quite logical assumption.  
-This is not the case, however, and what Vert.x does internally is load all given files independently, evaluate them independently of each other,
-and only after that's been done, stiches all files together to create a final result that gets served to Knot.x for processing.
+enables KnotxExtension to load Knot.x configuration files hierarchically,
+including cross-file references to variables/placeholders (only with HOCON files).
+
+The HOCON cross-references are not available out-of-box in Vert.x Config mechanism.
+Knot.x supports JSON and HOCON configurations only, so that functionality would be useful in, for example, 
+integration tests that can run in parrallel (i.e. randomization of ports, references to other parts of configuration).
+
+However, Vert.x loads all given files (stores), evaluates them independently and then stiches
+all files together to create a final result (JSON).
+
+##### Cross-references example
+
+We have two stores definitions:
+
+```hocon
+"stores": [
+      {
+        "type": "file",
+        "format": "hocon",
+        "config": { "path": "config/application.conf" }
+      },
+      {
+        "type": "json",
+        "config": { "test.wiremock.mockService.port": 4321 }
+      }
+    ]
+```
+
+The `application.conf` file contains
+
+```hocon
+config.somemodule.options.config {
+  clientOptions {
+    port = ${test.wiremock.mockService.port}
+  }
+}
+test.wiremock {
+  mockService {
+    port = 1234
+  }
+}
+```
+
+The default Vert.x Config processing result:
+
+```JSON
+{
+  "config": {
+    "somemodule": {
+      "options": {
+        "config": {
+          "clientOptions": {
+            "port": 1234
+          }
+        }
+      }
+    }
+  },
+  "test": {
+    "wiremock": {
+      "mockService": {
+        "port": 4321
+      }
+    }
+  }
+}
+```
+
+Expected behaviour:
+
+```JSON
+{
+  "config": {
+    "somemodule": {
+      "options": {
+        "config": {
+          "clientOptions": {
+            "port": 4321
+          }
+        }
+      }
+    }
+  },
+  "test": {
+    "wiremock": {
+      "mockService": {
+        "port": 4321
+      }
+    }
+  }
+}
+```
 
 KnotxConcatConfigProcessor works around this problem. It creates a new config format, in which you specify a JSON file:
 
@@ -66,7 +151,7 @@ KnotxConcatConfigProcessor works around this problem. It creates a new config fo
 }
 ```
 
-Files from `paths` are loaded in given order, and `overrides` are applied directly on top of resulting HOCON Config object, and only then
+Files from `paths` are loaded in given order, and `overrides` (JSON object) are applied directly on top of resulting HOCON Config object, and only then
 the configuration gets resolved and effectively returned for Knot.x for processing.
 
 Please refer to [HOCON readme](https://github.com/lightbend/config/blob/master/README.md) if you have any more questions regarding config loading
@@ -84,16 +169,13 @@ Standalone WireMockServer injection and lifecycle management. Allows for:
 ***Warning:*** if you use KnotxExtension, you **must not inject** KnotxWiremockExtension, 
 as the functionality of the latter gets auto-imported into the former.
 
-When used through KnotxExtension, WireMockServer instances' ports will be available 
-for referencing in configuration under `test.wiremock.<mock_name>.port` variables (using HOCON syntax).  
-Server's `mock_name` for injecting into configuration is currently taken from class variable or parameter name.
-Mock name is an unique identifier, so if two different test classes specify the same mock name, only one mock instance 
-will be created and injected into both class fields/method parameters.
+#### WireMockServer injection and naming
+
+WireMockServer instances are recognized by their identifier - either test class instance variable name 
+or test method parameter name.
 
 For example below, two servers will be available for `testWiremockRunningOnPort` method: `mockServiceRandom` 
 with randomly assigned port, and `server` on port `3000`.
-
-**Example usage:**
 
 ```java
 @ExtendWith(KnotxWiremockExtension.class)
@@ -112,6 +194,32 @@ public class WireMockTest {
   }
 }
 ```
+
+**One exception applies:** one WireMockServer instance will be created per identifier within test given class:
+
+```java
+@ExtendWith(KnotxWiremockExtension.class)
+public class WireMockTest {
+
+  @KnotxWiremock
+  private WireMockServer mockServiceRandom;
+
+  @Test
+  public void testWiremockEquality(
+      @KnotxWiremock WireMockServer mockServiceRandom) {
+    assertTrue(this.mockServiceRandom == mockServiceRandom);
+  }
+}
+```
+
+Only one WireMockServer instance with random port is created (`mockServiceRandom`) 
+and injected both into instance field and method parameter.
+
+#### Referencing WireMockServer ports in Knot.x configuration
+
+With KnotxExtension, created WireMockServer instances' ports will be available 
+for referencing in Knot.x configuration under `test.wiremock.<wiremockserver_identifier>.port` variables
+(for HOCON syntax only).
 
 ### KnotxArgumentConverter
 

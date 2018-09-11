@@ -15,8 +15,13 @@
  */
 package io.knotx.junit5.wiremock;
 
+import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.Options;
 
+/**
+ * Representation of {@linkplain WireMockServer}'s configurations stored in {@linkplain
+ * KnotxWiremockExtension}.
+ */
 class KnotxMockConfig {
   public static final String MIMETYPE_AUTODETECT = "!autodetect";
   public static final String PATH_INHERIT = "!inherit";

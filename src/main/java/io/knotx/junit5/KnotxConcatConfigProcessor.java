@@ -26,7 +26,6 @@ import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -60,37 +59,52 @@ public class KnotxConcatConfigProcessor implements ConfigProcessor {
           JsonObject overrides =
               Optional.of(configuration.getJsonObject("overrides")).orElse(new JsonObject());
 
-          // configurations are stored in order of overriding - base first, overrides last
-          List<String> configs = new ArrayList<>();
           try {
-            // load user configurations
-            configs = paths.stream()
-                .map(String::valueOf)
-                .map(s -> vertx.fileSystem().readFileBlocking(s).toString())
-                .collect(Collectors.toList());
+            // configurations are stored in order of overriding - base first, overrides last
+            // but for actual config creation we need them in reverse order
+            List<String> configs = loadConfigsReverseOrder(vertx, paths);
 
-            // put base files as last
-            Collections.reverse(configs);
+            Config finalConfig = createConfigFallbackChain(overrides, configs);
 
-            // overrides first
-            Config fullConfig = ConfigFactory.parseString(overrides.encode());
+            JsonObject result = resolveConfig(finalConfig);
 
-            // rest of files as fallbacks
-            for (String reader : configs) {
-              fullConfig = fullConfig.withFallback(ConfigFactory.parseString(reader));
-            }
-
-            // and render everything
-            fullConfig = fullConfig.resolve();
-            ConfigRenderOptions options =
-                ConfigRenderOptions.concise().setJson(true).setComments(false).setFormatted(false);
-            String output = fullConfig.root().render(options);
-
-            future.complete(new JsonObject(output));
+            future.complete(result);
           } catch (Exception e) {
             future.fail(e);
           }
         },
         handler);
+  }
+
+  private List<String> loadConfigsReverseOrder(Vertx vertx, JsonArray paths) {
+    List<String> configs;
+
+    configs = paths.stream()
+        .map(String::valueOf)
+        .map(s -> vertx.fileSystem().readFileBlocking(s).toString())
+        .collect(Collectors.toList());
+
+    Collections.reverse(configs);
+
+    return configs;
+  }
+
+  private Config createConfigFallbackChain(JsonObject overrides, List<String> configs) {
+    Config fullConfig = ConfigFactory.parseString(overrides.encode());
+
+    for (String reader : configs) {
+      fullConfig = fullConfig.withFallback(ConfigFactory.parseString(reader));
+    }
+    return fullConfig;
+  }
+
+  private JsonObject resolveConfig(Config finalConfig) {
+    ConfigRenderOptions options =
+        ConfigRenderOptions.concise().setJson(true).setComments(false).setFormatted(false);
+
+    finalConfig = finalConfig.resolve();
+    String jsonString = finalConfig.root().render(options);
+
+    return new JsonObject(jsonString);
   }
 }
