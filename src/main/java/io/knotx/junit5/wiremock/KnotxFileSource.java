@@ -18,16 +18,35 @@ package io.knotx.junit5.wiremock;
 import com.github.tomakehurst.wiremock.common.FileSource;
 import com.github.tomakehurst.wiremock.extension.Parameters;
 import com.github.tomakehurst.wiremock.extension.ResponseTransformer;
+import com.github.tomakehurst.wiremock.http.HttpHeader;
+import com.github.tomakehurst.wiremock.http.HttpHeaders;
 import com.github.tomakehurst.wiremock.http.Request;
 import com.github.tomakehurst.wiremock.http.Response;
 import com.github.tomakehurst.wiremock.http.Response.Builder;
+import com.google.common.collect.ImmutableMap;
 import io.knotx.junit5.util.FileReader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Map;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 
 /** Fix for WireMock's inability to deliver files from resources without appending various info */
 class KnotxFileSource extends ResponseTransformer {
+
+  private static final String CHARSET_APPEND = "; charset=UTF-8";
+
+  private static Map<String, String> extensionMapping =
+      ImmutableMap.of(
+          "html", "text/html",
+          "json", "application/json",
+          "txt", "text/plain");
+
+  private boolean autodetectMime;
+
+  public KnotxFileSource(KnotxMockConfig config) {
+    autodetectMime = KnotxMockConfig.MIMETYPE_AUTODETECT.equals(config.mimetype);
+  }
 
   @Override
   public Response transform(
@@ -40,11 +59,25 @@ class KnotxFileSource extends ResponseTransformer {
       throw new IllegalStateException("Malformed request URL", e);
     }
 
+    Builder builder = Builder.like(response);
+
+    if (autodetectMime) {
+      String extension = FilenameUtils.getExtension(requestPath);
+      String mime = extensionMapping.get(extension);
+
+      if (StringUtils.isNotBlank(mime)) {
+        mime += CHARSET_APPEND;
+        builder.headers(
+            HttpHeaders.copyOf(response.getHeaders())
+                .plus(HttpHeader.httpHeader("Content-Type", mime)));
+      }
+    }
+
     requestPath = StringUtils.removeStart(requestPath, "/");
 
     String body = FileReader.readTextSafe(requestPath);
 
-    return Builder.like(response).body(body).build();
+    return builder.body(body).build();
   }
 
   @Override
