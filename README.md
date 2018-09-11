@@ -57,6 +57,8 @@ This implementation of Vert.x [ConfigProcessor](https://vertx.io/docs/vertx-conf
 enables KnotxExtension to load Knot.x configuration files hierarchically,
 including cross-file references to variables/placeholders (only with HOCON files).
 
+##### Vert.x Config limitations
+
 The HOCON cross-references are not available out-of-box in Vert.x Config mechanism.
 Knot.x supports JSON and HOCON configurations only, so that functionality would be useful in, for example, 
 integration tests that can run in parrallel (i.e. randomization of ports, references to other parts of configuration).
@@ -64,7 +66,7 @@ integration tests that can run in parrallel (i.e. randomization of ports, refere
 However, Vert.x loads all given files (stores), evaluates them independently and then stiches
 all files together to create a final result (JSON).
 
-##### Cross-references example
+###### Cross-references example
 
 We have two stores definitions:
 
@@ -146,6 +148,8 @@ Expected behaviour:
   }
 }
 ```
+
+##### Solution
 
 KnotxConcatConfigProcessor works around this problem. It creates a new config format, in which you specify a JSON file:
 
