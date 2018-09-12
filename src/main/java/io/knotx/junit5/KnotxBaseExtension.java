@@ -30,4 +30,8 @@ public abstract class KnotxBaseExtension {
   protected Store getStore(ExtensionContext extensionContext) {
     return extensionContext.getStore(Namespace.create(this.getClass(), extensionContext));
   }
+
+  protected String getClassName(ExtensionContext extensionContext) {
+    return extensionContext.getTestClass().orElseThrow(IllegalStateException::new).getName();
+  }
 }

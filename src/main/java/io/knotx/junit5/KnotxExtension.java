@@ -165,7 +165,9 @@ public class KnotxExtension extends KnotxBaseExtension
                           .getDeclaringExecutable()
                           .getAnnotation(KnotxApplyConfiguration.class));
 
-      loadKnotxConfig(vertx, knotxConfig);
+      String forClass = getClassName(extensionContext);
+
+      loadKnotxConfig(vertx, knotxConfig, forClass);
 
       if (isReactivex) {
         return new io.vertx.reactivex.core.Vertx(vertx);
@@ -216,7 +218,7 @@ public class KnotxExtension extends KnotxBaseExtension
   }
 
   /** Load Knot.x config from given resource and apply it to Vertx instance */
-  private void loadKnotxConfig(Vertx vertx, KnotxApplyConfiguration knotxConfig) {
+  private void loadKnotxConfig(Vertx vertx, KnotxApplyConfiguration knotxConfig, String forClass) {
     if (knotxConfig == null) {
       throw new IllegalArgumentException(
           "Missing @KnotxApplyConfiguration annotation with the path to configuration files");
@@ -226,7 +228,7 @@ public class KnotxExtension extends KnotxBaseExtension
 
     vertx.deployVerticle(
         KnotxStarterVerticle.class,
-        createConfig(knotxConfig.value()),
+        createConfig(knotxConfig.value(), forClass),
         ar -> {
           if (ar.succeeded()) {
             toComplete.complete(null);
@@ -243,7 +245,7 @@ public class KnotxExtension extends KnotxBaseExtension
     }
   }
 
-  private DeploymentOptions createConfig(String[] paths) {
+  private DeploymentOptions createConfig(String[] paths, String forClass) {
     ConfigRetrieverOptions retrieverOptions = new ConfigRetrieverOptions();
 
     Stream.of(paths).forEach(this::guardConfigFormat);
@@ -251,7 +253,7 @@ public class KnotxExtension extends KnotxBaseExtension
     JsonObject config = new JsonObject();
 
     config.put("paths", Arrays.asList(paths));
-    config.put("overrides", wiremockExtension.getConfigOverrides());
+    config.put("overrides", wiremockExtension.getConfigOverrides(forClass));
 
     retrieverOptions.addStore(
         new ConfigStoreOptions()
