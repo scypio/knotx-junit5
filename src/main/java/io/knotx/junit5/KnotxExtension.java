@@ -15,6 +15,7 @@
  */
 package io.knotx.junit5;
 
+import com.typesafe.config.Config;
 import io.knotx.junit5.wiremock.KnotxWiremock;
 import io.knotx.junit5.wiremock.KnotxWiremockExtension;
 import io.knotx.launcher.KnotxStarterVerticle;
@@ -25,12 +26,17 @@ import io.vertx.core.Vertx;
 import io.vertx.core.VertxException;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
+import java.lang.reflect.Executable;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.AfterTestExecutionCallback;
@@ -154,20 +160,12 @@ public class KnotxExtension extends KnotxBaseExtension
     // create vertx obj with knotx config injection
     if (type == Vertx.class || isReactivex) {
       Vertx vertx = (Vertx) resolveVertx(isReactivex, parameterContext, extensionContext);
-      KnotxApplyConfiguration knotxConfig;
 
-      knotxConfig =
-          parameterContext
-              .findAnnotation(KnotxApplyConfiguration.class)
-              .orElseGet(
-                  () ->
-                      parameterContext
-                          .getDeclaringExecutable()
-                          .getAnnotation(KnotxApplyConfiguration.class));
+      List<String> knotxConfigs = resolveAnnotationConfig(parameterContext);
 
       String forClass = getClassName(extensionContext);
 
-      loadKnotxConfig(vertx, knotxConfig, forClass);
+      loadKnotxConfig(vertx, knotxConfigs, forClass);
 
       if (isReactivex) {
         return new io.vertx.reactivex.core.Vertx(vertx);
@@ -176,6 +174,31 @@ public class KnotxExtension extends KnotxBaseExtension
     }
 
     throw new IllegalStateException("Please file a bug report, this shouldn't happen");
+  }
+
+  /**
+   * Developer announcement: This method could be worse, but enables us to apply a whole chain of
+   * different configurations taken from class, method, and parameter. User friendliness is a plus.
+   */
+  private List<String> resolveAnnotationConfig(ParameterContext parameter) {
+    Executable executable = parameter.getDeclaringExecutable();
+
+    KnotxApplyConfiguration classConfig =
+        executable.getDeclaringClass().getAnnotation(KnotxApplyConfiguration.class);
+    KnotxApplyConfiguration methodConfig = executable.getAnnotation(KnotxApplyConfiguration.class);
+    KnotxApplyConfiguration parameterConfig =
+        parameter.getParameter().getAnnotation(KnotxApplyConfiguration.class);
+
+    List<KnotxApplyConfiguration> list = Arrays.asList(classConfig, methodConfig, parameterConfig);
+    List<String> result = new LinkedList<>();
+
+    for (KnotxApplyConfiguration config : list) {
+      if (Objects.nonNull(config)) {
+        Collections.addAll(result, config.value());
+      }
+    }
+
+    return result;
   }
 
   private Object resolveVertx(
@@ -218,17 +241,29 @@ public class KnotxExtension extends KnotxBaseExtension
   }
 
   /** Load Knot.x config from given resource and apply it to Vertx instance */
-  private void loadKnotxConfig(Vertx vertx, KnotxApplyConfiguration knotxConfig, String forClass) {
-    if (knotxConfig == null) {
-      throw new IllegalArgumentException(
-          "Missing @KnotxApplyConfiguration annotation with the path to configuration files");
+  private void loadKnotxConfig(Vertx vertx, List<String> paths, String forClass) {
+    pathsCorrectnessGuard(paths);
+
+    List<JsonObject> overrides = getAllConfigOverrides(forClass);
+
+    JsonObject concatConfig = createKnotxConcatConfig(paths, overrides);
+    Config fullConfig =
+        new KnotxConcatConfigProcessor().createHoconConfig(vertx.fileSystem(), concatConfig);
+
+    if (fullConfig.hasPath("test.random")) {
+      // todo now we're talking
+      // todo debug
+
+      fullConfig.getConfig("test.random");
+
     }
 
     CompletableFuture<Void> toComplete = new CompletableFuture<>();
+    DeploymentOptions deploymentOptions = createDeploymentConfig(paths, overrides);
 
     vertx.deployVerticle(
         KnotxStarterVerticle.class,
-        createConfig(knotxConfig.value(), forClass),
+        deploymentOptions,
         ar -> {
           if (ar.succeeded()) {
             toComplete.complete(null);
@@ -239,32 +274,51 @@ public class KnotxExtension extends KnotxBaseExtension
 
     try {
       toComplete.get();
-    } catch (ExecutionException ignore) {
-    } catch (InterruptedException e) {
+    } catch (InterruptedException | ExecutionException e) {
       throw new ParameterResolutionException("Couldn't create Knot.x configuration", e);
     }
   }
 
-  private DeploymentOptions createConfig(String[] paths, String forClass) {
+  private void pathsCorrectnessGuard(List<String> paths) {
+    if (paths.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Missing @KnotxApplyConfiguration annotation with the path to configuration files");
+    }
+
+    paths.forEach(this::guardConfigFormat);
+  }
+
+  private DeploymentOptions createDeploymentConfig(List<String> paths, List<JsonObject> overrides) {
     ConfigRetrieverOptions retrieverOptions = new ConfigRetrieverOptions();
 
-    Stream.of(paths).forEach(this::guardConfigFormat);
-
-    JsonObject config = new JsonObject();
-
-    config.put("paths", Arrays.asList(paths));
-    config.put("overrides", wiremockExtension.getConfigOverrides(forClass));
+    JsonObject config = createKnotxConcatConfig(paths, overrides);
 
     retrieverOptions.addStore(
         new ConfigStoreOptions()
             .setType("json")
-            .setFormat("knotx")
+            .setFormat("knotx") // todo: move to pure json/json
             .setOptional(false)
             .setConfig(config));
 
     JsonObject storesConfig = retrieverOptions.toJson();
     return new DeploymentOptions()
         .setConfig(new JsonObject().put("configRetrieverOptions", storesConfig));
+  }
+
+  private JsonObject createKnotxConcatConfig(List<String> paths, List<JsonObject> overrides) {
+    return new JsonObject().put("paths", paths).put("overrides", overrides);
+  }
+
+  private List<JsonObject> getAllConfigOverrides(String forClass) {
+    List<JsonObject> result = new ArrayList<>();
+
+    JsonObject wiremockOverride = wiremockExtension.getConfigOverride(forClass);
+
+    if (Objects.nonNull(wiremockOverride)) {
+      result.add(wiremockOverride);
+    }
+
+    return result;
   }
 
   private void guardConfigFormat(String path) {

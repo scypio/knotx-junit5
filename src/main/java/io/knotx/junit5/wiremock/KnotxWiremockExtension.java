@@ -232,7 +232,7 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
     wiremockMapLock.unlock();
   }
 
-  public JsonObject getConfigOverrides(String forClass) {
+  public JsonObject getConfigOverride(String forClass) {
     Map<String, Object> serversConfig = new HashMap<>();
 
     try {

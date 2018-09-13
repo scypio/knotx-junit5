@@ -24,12 +24,15 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
+import io.vertx.core.file.FileSystem;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Vert.x ConfigProcessor implementation for Knot.x test purposes. Allows to use hierarchical
@@ -40,6 +43,9 @@ import java.util.stream.Collectors;
  * KnotxWiremockExtension}.
  */
 public class KnotxConcatConfigProcessor implements ConfigProcessor {
+
+  private static final String OVERRIDES_KEY = "overrides";
+  private static final String PATHS_KEY = "paths";
 
   @Override
   public String name() {
@@ -54,17 +60,8 @@ public class KnotxConcatConfigProcessor implements ConfigProcessor {
       Handler<AsyncResult<JsonObject>> handler) {
     vertx.executeBlocking(
         future -> {
-          JsonArray paths =
-              Optional.of(configuration.getJsonArray("paths")).orElse(new JsonArray());
-          JsonObject overrides =
-              Optional.of(configuration.getJsonObject("overrides")).orElse(new JsonObject());
-
           try {
-            // configurations are stored in order of overriding - base first, overrides last
-            // but for actual config creation we need them in reverse order
-            List<String> configs = loadConfigsReverseOrder(vertx, paths);
-
-            Config finalConfig = createConfigFallbackChain(overrides, configs);
+            Config finalConfig = createHoconConfig(vertx.fileSystem(), configuration);
 
             JsonObject result = resolveConfig(finalConfig);
 
@@ -76,24 +73,64 @@ public class KnotxConcatConfigProcessor implements ConfigProcessor {
         handler);
   }
 
-  private List<String> loadConfigsReverseOrder(Vertx vertx, JsonArray paths) {
-    List<String> configs;
+  /**
+   * Evaluate passed <code>configuration</code> and return as HOCON Config object.<br>
+   * For further reference on configuration format please refer to README.md, section "Vert.x Config
+   * limitations".
+   *
+   * @param fileSystem Vert.x object used to resolve file contents declared in configuration
+   * @param configuration JSON in format described in README.md
+   * @return full HOCON Config fallback chain
+   */
+  public Config createHoconConfig(FileSystem fileSystem, JsonObject configuration) {
+    Stream<String> base = getBase(fileSystem, configuration);
+    Stream<String> overrides = getOverrides(configuration);
 
-    configs = paths.stream()
+    // configurations are stored in order of overriding - base first, overrides last
+    // but for actual config creation we need them together and in reverse order
+    List<String> configs = concatAndReverseOrder(base, overrides);
+
+    return createConfigFallbackChain(configs);
+  }
+
+  private Stream<String> getOverrides(JsonObject configuration) {
+    return Optional.of(configuration.getJsonArray(OVERRIDES_KEY))
+        .orElse(new JsonArray().add(configuration.getJsonObject(OVERRIDES_KEY)))
+        .stream()
+        .filter(Objects::nonNull)
+        .map(
+            o -> {
+              if (!(o instanceof JsonObject)) {
+                throw new IllegalArgumentException(
+                    "Overrides must be instances of JsonObject, got: '" + o.getClass() + "'");
+              }
+              return (JsonObject) o;
+            })
+        .map(JsonObject::encode);
+  }
+
+  private Stream<String> getBase(final FileSystem fileSystem, JsonObject configuration) {
+    return Optional.of(configuration.getJsonArray(PATHS_KEY))
+        .orElse(new JsonArray())
+        .stream()
         .map(String::valueOf)
-        .map(s -> vertx.fileSystem().readFileBlocking(s).toString())
-        .collect(Collectors.toList());
+        .map(s -> fileSystem.readFileBlocking(s).toString());
+  }
+
+  private List<String> concatAndReverseOrder(Stream<String> base, Stream<String> overrides) {
+    List<String> configs =
+        Stream.concat(base.sequential(), overrides.sequential()).collect(Collectors.toList());
 
     Collections.reverse(configs);
 
     return configs;
   }
 
-  private Config createConfigFallbackChain(JsonObject overrides, List<String> configs) {
-    Config fullConfig = ConfigFactory.parseString(overrides.encode());
+  private Config createConfigFallbackChain(List<String> configs) {
+    Config fullConfig = ConfigFactory.empty();
 
-    for (String reader : configs) {
-      fullConfig = fullConfig.withFallback(ConfigFactory.parseString(reader));
+    for (String config : configs) {
+      fullConfig = fullConfig.withFallback(ConfigFactory.parseString(config));
     }
     return fullConfig;
   }

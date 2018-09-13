@@ -156,11 +156,15 @@ KnotxConcatConfigProcessor works around this problem. It creates a new config fo
 ```json
 { 
   "paths": [ "base.conf", "specific.json" ], 
-  "overrides": {"baseKey": "newValue"}
+  "overrides": [ 
+    { "baseKey": "newValue" },
+    { "specificKey": [ "entry1", "entry2" ] }
+  ]
 }
 ```
 
-Files from `paths` are loaded in given order, and `overrides` (JSON object) are applied directly on top of resulting HOCON Config object, and only then
+Files from `paths` are loaded in given order, and each override from `overrides` (JSON object) is applied 
+on top of resulting HOCON Config object, and only then
 the configuration gets resolved and effectively returned for Knot.x for processing.
 
 Please refer to [HOCON readme](https://github.com/lightbend/config/blob/master/README.md) if you have any more questions regarding config loading

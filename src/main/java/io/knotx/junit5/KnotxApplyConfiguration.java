@@ -25,17 +25,16 @@ import java.lang.annotation.Target;
  * href="https://github.com/Cognifide/knotx/wiki/Configuration">here</a>. and README.md.
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.METHOD})
+@Target({ElementType.TYPE, ElementType.METHOD, ElementType.PARAMETER})
 public @interface KnotxApplyConfiguration {
 
   /**
    * Configuration files paths.
    *
-   * Knot.x uses <a href="https://github.com/lightbend/config/blob/master/HOCON.md">HOCON</a> syntax
-   * for files with *.conf extension, otherwise uses JSON.
+   * <p>Knot.x uses <a href="https://github.com/lightbend/config/blob/master/HOCON.md">HOCON</a>
+   * syntax for files with *.conf extension, otherwise uses JSON.
    *
    * @return configuration files
    */
   String[] value();
-
 }
