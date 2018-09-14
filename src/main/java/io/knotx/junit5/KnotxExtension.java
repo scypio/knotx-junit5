@@ -15,6 +15,7 @@
  */
 package io.knotx.junit5;
 
+import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.Config;
 import io.knotx.junit5.wiremock.KnotxWiremock;
 import io.knotx.junit5.wiremock.KnotxWiremockExtension;
@@ -30,13 +31,16 @@ import java.lang.reflect.Executable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import me.alexpanov.net.FreePortFinder;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.AfterTestExecutionCallback;
@@ -76,6 +80,7 @@ public class KnotxExtension extends KnotxBaseExtension
 
   private static final String HOCON_EXTENSION = "conf";
   private static final String JSON_EXTENSION = "json";
+  public static final String RANDOM_GEN_NAMESPACE = "test.random";
 
   private final VertxExtension vertxExtension = new VertxExtension();
   private final KnotxWiremockExtension wiremockExtension = new KnotxWiremockExtension();
@@ -244,19 +249,13 @@ public class KnotxExtension extends KnotxBaseExtension
   private void loadKnotxConfig(Vertx vertx, List<String> paths, String forClass) {
     pathsCorrectnessGuard(paths);
 
-    List<JsonObject> overrides = getAllConfigOverrides(forClass);
-
-    JsonObject concatConfig = createKnotxConcatConfig(paths, overrides);
+    List<JsonObject> overrides = new ArrayList<>();
     Config fullConfig =
-        new KnotxConcatConfigProcessor().createHoconConfig(vertx.fileSystem(), concatConfig);
+        new KnotxConcatConfigProcessor()
+            .createHoconConfig(vertx.fileSystem(), createKnotxConcatConfig(paths, overrides));
 
-    if (fullConfig.hasPath("test.random")) {
-      // todo now we're talking
-      // todo debug
-
-      fullConfig.getConfig("test.random");
-
-    }
+    wiremockExtension.addToOverrides(fullConfig, overrides, forClass);
+    this.addToOverrides(fullConfig, overrides, forClass);
 
     CompletableFuture<Void> toComplete = new CompletableFuture<>();
     DeploymentOptions deploymentOptions = createDeploymentConfig(paths, overrides);
@@ -279,6 +278,31 @@ public class KnotxExtension extends KnotxBaseExtension
     }
   }
 
+  @Override
+  public void addToOverrides(Config config, List<JsonObject> overrides, String forClass) {
+    if (config.hasPath(RANDOM_GEN_NAMESPACE)) {
+      Config servicesConfig = config.getConfig(RANDOM_GEN_NAMESPACE);
+      HashMap<String, Integer> servicePorts = new HashMap<>();
+
+      Set<String> services = servicesConfig.root().keySet();
+
+      // random port generation must be explicitly requested
+      services.removeIf(s -> !servicesConfig.hasPath(s + ".port"));
+
+      if (services.isEmpty()) {
+        return;
+      }
+
+      services.forEach(s -> servicePorts.put(s, FreePortFinder.findFreeLocalPort()));
+
+      JsonObject override = new JsonObject();
+
+      servicePorts.forEach((name, port) -> override.put(name, ImmutableMap.of("port", port)));
+
+      overrides.add(new JsonObject().put("test", new JsonObject().put("random", override)));
+    }
+  }
+
   private void pathsCorrectnessGuard(List<String> paths) {
     if (paths.isEmpty()) {
       throw new IllegalArgumentException(
@@ -296,7 +320,7 @@ public class KnotxExtension extends KnotxBaseExtension
     retrieverOptions.addStore(
         new ConfigStoreOptions()
             .setType("json")
-            .setFormat("knotx") // todo: move to pure json/json
+            .setFormat("knotx")
             .setOptional(false)
             .setConfig(config));
 
@@ -307,18 +331,6 @@ public class KnotxExtension extends KnotxBaseExtension
 
   private JsonObject createKnotxConcatConfig(List<String> paths, List<JsonObject> overrides) {
     return new JsonObject().put("paths", paths).put("overrides", overrides);
-  }
-
-  private List<JsonObject> getAllConfigOverrides(String forClass) {
-    List<JsonObject> result = new ArrayList<>();
-
-    JsonObject wiremockOverride = wiremockExtension.getConfigOverride(forClass);
-
-    if (Objects.nonNull(wiremockOverride)) {
-      result.add(wiremockOverride);
-    }
-
-    return result;
   }
 
   private void guardConfigFormat(String path) {

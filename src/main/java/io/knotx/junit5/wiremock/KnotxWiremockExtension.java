@@ -21,12 +21,14 @@ import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 import com.google.common.collect.ImmutableMap;
+import com.typesafe.config.Config;
 import io.knotx.junit5.KnotxBaseExtension;
 import io.knotx.junit5.KnotxExtension;
 import io.vertx.core.json.JsonObject;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.locks.ReentrantLock;
@@ -232,7 +234,8 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
     wiremockMapLock.unlock();
   }
 
-  public JsonObject getConfigOverride(String forClass) {
+  @Override
+  public void addToOverrides(Config config, List<JsonObject> overrides, String forClass) {
     Map<String, Object> serversConfig = new HashMap<>();
 
     try {
@@ -242,17 +245,22 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
       serviceNamePortMap
           .values()
           .stream()
-          .filter(config -> config.name.startsWith(forClass))
+          .filter(mockConfig -> mockConfig.name.startsWith(forClass))
           .forEach(
-              config -> {
-                String trimmed = config.name.substring(forClass.length());
-                serversConfig.put(trimmed, ImmutableMap.of("port", config.port));
+              mockConfig -> {
+                String trimmed = mockConfig.name.substring(forClass.length());
+                serversConfig.put(trimmed, ImmutableMap.of("port", mockConfig.port));
               });
     } finally {
       wiremockMapLock.unlock();
     }
 
-    Map<String, Object> map = ImmutableMap.of("test", ImmutableMap.of("wiremock", serversConfig));
-    return new JsonObject(map);
+    if (serversConfig.isEmpty()) {
+      return;
+    }
+
+    JsonObject json = new JsonObject();
+    json.put("test", ImmutableMap.of("wiremock", serversConfig));
+    overrides.add(json);
   }
 }

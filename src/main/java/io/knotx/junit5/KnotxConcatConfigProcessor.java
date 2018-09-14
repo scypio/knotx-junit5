@@ -95,7 +95,7 @@ public class KnotxConcatConfigProcessor implements ConfigProcessor {
 
   private Stream<String> getOverrides(JsonObject configuration) {
     return Optional.of(configuration.getJsonArray(OVERRIDES_KEY))
-        .orElse(new JsonArray().add(configuration.getJsonObject(OVERRIDES_KEY)))
+        .orElse(new JsonArray().add(configuration.getValue(OVERRIDES_KEY)))
         .stream()
         .filter(Objects::nonNull)
         .map(
