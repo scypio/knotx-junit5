@@ -155,7 +155,7 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
   }
 
   private String getServerName(ExtensionContext context, ParameterContext parameterContext) {
-    return getClassName(context) + parameterContext.getParameter().getName();
+    return getClassName(context) + getParameterName(parameterContext);
   }
 
   private static WireMock getOrCreateWiremock(int port) {

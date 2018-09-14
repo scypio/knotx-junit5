@@ -35,13 +35,17 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import me.alexpanov.net.FreePortFinder;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.AfterTestExecutionCallback;
@@ -82,7 +86,9 @@ public class KnotxExtension extends KnotxBaseExtension
   private static final String HOCON_EXTENSION = "conf";
   private static final String JSON_EXTENSION = "json";
   private static final String RANDOM_GEN_NAMESPACE = "test.random";
-
+  private static final ReadWriteLock referenceMapLock = new ReentrantReadWriteLock(true);
+  private static final Map<String, Integer> referencePortMap = new HashMap<>();
+  public static final String PORT = "port";
   private final VertxExtension vertxExtension = new VertxExtension();
   private final KnotxWiremockExtension wiremockExtension = new KnotxWiremockExtension();
 
@@ -99,7 +105,7 @@ public class KnotxExtension extends KnotxBaseExtension
     }
 
     // vertx and reactivex-vertx
-    return shouldSupportType(parameterContext);
+    return shouldSupportVertx(parameterContext) || shouldSupportInjection(parameterContext);
   }
 
   @Override
@@ -107,8 +113,11 @@ public class KnotxExtension extends KnotxBaseExtension
       ParameterContext parameterContext, ExtensionContext extensionContext)
       throws ParameterResolutionException {
 
-    if (shouldSupportType(parameterContext)) {
-      return internalResolve(parameterContext, extensionContext);
+    if (shouldSupportVertx(parameterContext)) {
+      return internalVertxResolve(parameterContext, extensionContext);
+    }
+    if (shouldSupportInjection(parameterContext)) {
+      return resolveInjection(parameterContext, extensionContext);
     }
     if (wiremockExtension.supportsParameter(parameterContext, extensionContext)) {
       return wiremockExtension.resolveParameter(parameterContext, extensionContext);
@@ -151,13 +160,91 @@ public class KnotxExtension extends KnotxBaseExtension
     vertxExtension.beforeTestExecution(context);
   }
 
-  private boolean shouldSupportType(ParameterContext parameterContext) {
-    Class<?> type = getType(parameterContext);
+  @Override
+  public void addToOverrides(Config config, List<JsonObject> overrides, String forReference) {
+    if (config.hasPath(RANDOM_GEN_NAMESPACE)) {
+      Config servicesConfig = config.getConfig(RANDOM_GEN_NAMESPACE);
+      HashMap<String, Integer> servicePorts = new HashMap<>();
 
+      // servicesConfig doesn't support
+      Set<String> services = new HashSet<>(servicesConfig.root().keySet());
+
+      // random port generation must be explicitly requested
+      services.removeIf(s -> !servicesConfig.hasPath(s + "." + PORT));
+
+      if (services.isEmpty()) {
+        return;
+      }
+
+      try {
+        referenceMapLock.writeLock().lock(); // effectively synchronizing FreePortFinder
+
+        services.forEach(s -> servicePorts.put(s, FreePortFinder.findFreeLocalPort()));
+
+        JsonObject override = new JsonObject();
+
+        servicePorts.forEach(
+            (name, port) -> {
+              override.put(name, ImmutableMap.of(PORT, port));
+              referencePortMap.put(forReference + name, port);
+            });
+
+        overrides.add(new JsonObject().put("test", new JsonObject().put("random", override)));
+      } finally {
+        referenceMapLock.writeLock().unlock();
+      }
+    }
+  }
+
+  private Object resolveInjection(
+      ParameterContext parameterContext, ExtensionContext extensionContext) {
+    // need class name, method name, param name
+    String forParam = getParameterName(parameterContext);
+
+    if (forParam.startsWith("arg")) {
+      forParam =
+          parameterContext
+              .findAnnotation(KnotxInject.class)
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          "KnotxInject annotation not present "
+                              + "and couldn't retrieve real parameter "
+                              + "names due to missing compiler flag "
+                              + "'-parameters' during tests compilation"))
+              .value();
+    }
+
+    if (!StringUtils.endsWithIgnoreCase(forParam, PORT)) {
+      throw new IllegalArgumentException(
+          "Requirement: Variable name must end with 'port' for valid value injection");
+    }
+
+    // trim param name
+    forParam = StringUtils.removeEndIgnoreCase(forParam, PORT);
+
+    String reference = getClassName(extensionContext) + getMethodName(parameterContext) + forParam;
+
+    try {
+      referenceMapLock.readLock().lock();
+
+      return referencePortMap.get(reference);
+    } finally {
+      referenceMapLock.readLock().unlock();
+    }
+  }
+
+  private boolean shouldSupportVertx(ParameterContext parameterContext) {
+    Class<?> type = getType(parameterContext);
     return type.equals(io.vertx.reactivex.core.Vertx.class) || type.equals(Vertx.class);
   }
 
-  private Object internalResolve(
+  private boolean shouldSupportInjection(ParameterContext parameterContext) {
+    return getType(parameterContext).equals(Integer.class)
+        && parameterContext.isAnnotated(KnotxInject.class);
+  }
+
+  private Object internalVertxResolve(
       ParameterContext parameterContext, ExtensionContext extensionContext) {
     Class<?> type = getType(parameterContext);
     boolean isReactivex = (type == io.vertx.reactivex.core.Vertx.class);
@@ -169,8 +256,9 @@ public class KnotxExtension extends KnotxBaseExtension
       List<String> knotxConfigs = resolveAnnotationConfig(parameterContext);
 
       String forClass = getClassName(extensionContext);
+      String forMethod = getMethodName(parameterContext);
 
-      loadKnotxConfig(vertx, knotxConfigs, forClass);
+      loadKnotxConfig(vertx, knotxConfigs, forClass, forMethod);
 
       if (isReactivex) {
         return new io.vertx.reactivex.core.Vertx(vertx);
@@ -246,7 +334,7 @@ public class KnotxExtension extends KnotxBaseExtension
   }
 
   /** Load Knot.x config from given resource and apply it to Vertx instance */
-  private void loadKnotxConfig(Vertx vertx, List<String> paths, String forClass) {
+  private void loadKnotxConfig(Vertx vertx, List<String> paths, String forClass, String forMethod) {
     pathsCorrectnessGuard(paths);
 
     List<JsonObject> overrides = new ArrayList<>();
@@ -255,7 +343,7 @@ public class KnotxExtension extends KnotxBaseExtension
             .createHoconConfig(vertx.fileSystem(), createKnotxConcatConfig(paths, overrides));
 
     wiremockExtension.addToOverrides(fullConfig, overrides, forClass);
-    this.addToOverrides(fullConfig, overrides, forClass);
+    this.addToOverrides(fullConfig, overrides, forClass + forMethod);
 
     CompletableFuture<Void> toComplete = new CompletableFuture<>();
     DeploymentOptions deploymentOptions = createDeploymentConfig(paths, overrides);
@@ -275,31 +363,6 @@ public class KnotxExtension extends KnotxBaseExtension
       toComplete.get();
     } catch (InterruptedException | ExecutionException e) {
       throw new ParameterResolutionException("Couldn't create Knot.x configuration", e);
-    }
-  }
-
-  @Override
-  public void addToOverrides(Config config, List<JsonObject> overrides, String forClass) {
-    if (config.hasPath(RANDOM_GEN_NAMESPACE)) {
-      Config servicesConfig = config.getConfig(RANDOM_GEN_NAMESPACE);
-      HashMap<String, Integer> servicePorts = new HashMap<>();
-
-      Set<String> services = new HashSet<>(servicesConfig.root().keySet());
-
-      // random port generation must be explicitly requested
-      services.removeIf(s -> !servicesConfig.hasPath(s + ".port"));
-
-      if (services.isEmpty()) {
-        return;
-      }
-
-      services.forEach(s -> servicePorts.put(s, FreePortFinder.findFreeLocalPort()));
-
-      JsonObject override = new JsonObject();
-
-      servicePorts.forEach((name, port) -> override.put(name, ImmutableMap.of("port", port)));
-
-      overrides.add(new JsonObject().put("test", new JsonObject().put("random", override)));
     }
   }
 

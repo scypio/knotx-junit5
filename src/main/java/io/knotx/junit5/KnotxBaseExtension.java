@@ -38,5 +38,13 @@ public abstract class KnotxBaseExtension {
     return extensionContext.getTestClass().orElseThrow(IllegalStateException::new).getName();
   }
 
-  public void addToOverrides(Config config, List<JsonObject> overrides, String forClass) {}
+  protected String getMethodName(ParameterContext parameterContext) {
+    return parameterContext.getDeclaringExecutable().getName();
+  }
+
+  protected String getParameterName(ParameterContext parameterContext) {
+    return parameterContext.getParameter().getName();
+  }
+
+  public void addToOverrides(Config config, List<JsonObject> overrides, String forReference) {}
 }
