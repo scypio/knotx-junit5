@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -80,7 +81,7 @@ public class KnotxExtension extends KnotxBaseExtension
 
   private static final String HOCON_EXTENSION = "conf";
   private static final String JSON_EXTENSION = "json";
-  public static final String RANDOM_GEN_NAMESPACE = "test.random";
+  private static final String RANDOM_GEN_NAMESPACE = "test.random";
 
   private final VertxExtension vertxExtension = new VertxExtension();
   private final KnotxWiremockExtension wiremockExtension = new KnotxWiremockExtension();
@@ -117,8 +118,7 @@ public class KnotxExtension extends KnotxBaseExtension
   }
 
   @Override
-  public void postProcessTestInstance(Object testInstance, ExtensionContext context)
-      throws Exception {
+  public void postProcessTestInstance(Object testInstance, ExtensionContext context) {
     wiremockExtension.postProcessTestInstance(testInstance, context);
   }
 
@@ -284,7 +284,7 @@ public class KnotxExtension extends KnotxBaseExtension
       Config servicesConfig = config.getConfig(RANDOM_GEN_NAMESPACE);
       HashMap<String, Integer> servicePorts = new HashMap<>();
 
-      Set<String> services = servicesConfig.root().keySet();
+      Set<String> services = new HashSet<>(servicesConfig.root().keySet());
 
       // random port generation must be explicitly requested
       services.removeIf(s -> !servicesConfig.hasPath(s + ".port"));
