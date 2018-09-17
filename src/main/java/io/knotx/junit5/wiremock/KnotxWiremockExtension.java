@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
@@ -46,10 +47,10 @@ import org.junit.jupiter.api.extension.TestInstancePostProcessor;
 public class KnotxWiremockExtension extends KnotxBaseExtension
     implements ParameterResolver, TestInstancePostProcessor, AfterAllCallback {
 
-  private static final ReentrantLock wiremockMapLock = new ReentrantLock(true);
-  private static final HashMap<Integer, WireMock> wiremockMap = new HashMap<>();
-  private static final HashMap<Integer, WireMockServer> wiremockServerMap = new HashMap<>();
-  private static final HashMap<String, KnotxMockConfig> serviceNamePortMap = new HashMap<>();
+  private static final ReentrantLock globalMapsLock = new ReentrantLock(true);
+  private static final HashMap<Integer, KnotxWiremockServer> portToServerMap = new HashMap<>();
+  private static final HashMap<String, KnotxWiremockServer> serviceNameToServerMap =
+      new HashMap<>();
 
   /**
    * Retrieve Wiremock for given port and add given mappings
@@ -106,7 +107,7 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
               .findAnnotation(KnotxWiremock.class)
               .orElseThrow(IllegalStateException::new);
 
-      String name = getServerName(extensionContext, parameterContext);
+      String name = getClassFieldName(extensionContext, parameterContext);
 
       return setupWiremockServer(name, knotxWiremock);
     }
@@ -116,7 +117,8 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
 
   @Override
   public void afterAll(ExtensionContext context) {
-    shutdownWiremock();
+    // fixme: mocks are shut down before all execution ends in parallel environment
+    //shutdownWiremock();
   }
 
   /** Sets up all annotated fields in test class */
@@ -127,53 +129,114 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
       return;
     }
 
-    Field[] fields = testClass.get().getDeclaredFields();
+    forEachWiremockFields(
+        testClass.get(),
+        field -> {
+          String name = getClassFieldName(context, field);
+          WireMockServer server =
+              setupWiremockServer(name, field.getAnnotation(KnotxWiremock.class));
+
+          field.setAccessible(true);
+          try {
+            field.set(testInstance, server);
+          } catch (IllegalAccessException | IllegalArgumentException e) {
+            throw new IllegalStateException(
+                "Could not inject wiremock server into requested field", e);
+          }
+        });
+  }
+
+  public void addMissingInstanceServers(String forClass, ExtensionContext context) {
+    Optional<Object> instance = context.getTestInstance();
+
+    if (!instance.isPresent()) {
+      return;
+    }
+    if (serviceNameToServerMap.keySet().stream().anyMatch(s -> s.startsWith(forClass))) {
+      return;
+    }
+
+    Class<?> testClass = context.getRequiredTestClass();
+
+    forEachWiremockFields(
+        testClass,
+        field -> {
+          String name = getClassFieldName(context, field);
+
+          try {
+            field.setAccessible(true);
+            Object wiremockObject = field.get(instance.get());
+            KnotxWiremockServer wiremockServer;
+
+            if (wiremockObject instanceof KnotxWiremockServer) {
+              wiremockServer = ((KnotxWiremockServer) wiremockObject);
+
+              int port = wiremockServer.port();
+
+              portToServerMap.put(port, wiremockServer);
+              serviceNameToServerMap.put(name, wiremockServer);
+            }
+          } catch (IllegalAccessException e) {
+            throw new IllegalStateException(
+                "Could not retrieve WireMockServer field value on alternative fork", e);
+          }
+        });
+  }
+
+  @Override
+  public void addToOverrides(Config config, List<JsonObject> overrides, String forClass) {
+    Map<String, Object> serversConfig = new HashMap<>();
+
+    try {
+      globalMapsLock.lock();
+
+      // get entries for given class, trim class name for results
+      serviceNameToServerMap
+          .values()
+          .stream()
+          .map(KnotxWiremockServer::getMockConfig)
+          .filter(mockConfig -> mockConfig.name.startsWith(forClass))
+          .forEach(
+              mockConfig -> {
+                String trimmed = mockConfig.name.substring(forClass.length());
+                serversConfig.put(trimmed, ImmutableMap.of("port", mockConfig.port));
+              });
+    } finally {
+      globalMapsLock.unlock();
+    }
+
+    if (serversConfig.isEmpty()) {
+      return;
+    }
+
+    JsonObject json = new JsonObject();
+    json.put("test", ImmutableMap.of("wiremock", serversConfig));
+    overrides.add(json);
+  }
+
+  private static WireMock getOrCreateWiremock(int port) {
+    try {
+      globalMapsLock.lock();
+
+      if (portToServerMap.containsKey(port)) {
+        return portToServerMap.get(port).getWireMock();
+      }
+
+      return new WireMock("localhost", port);
+    } finally {
+      globalMapsLock.unlock();
+    }
+  }
+
+  private void forEachWiremockFields(Class<?> testClass, Consumer<Field> consumer) {
+    Field[] fields = testClass.getDeclaredFields();
 
     Arrays.stream(fields)
         .filter(
             field ->
                 field.isAnnotationPresent(KnotxWiremock.class)
                     && field.getType().equals(WireMockServer.class))
-        .forEach(
-            field -> {
-              String name = getServerName(context, field);
-              WireMockServer server =
-                  setupWiremockServer(name, field.getAnnotation(KnotxWiremock.class));
-
-              field.setAccessible(true);
-              try {
-                field.set(testInstance, server);
-              } catch (IllegalAccessException | IllegalArgumentException e) {
-                throw new RuntimeException(
-                    "Could not inject wiremock server into requested field", e);
-              }
-            });
-  }
-
-  private String getServerName(ExtensionContext context, Field field) {
-    return getClassName(context) + field.getName();
-  }
-
-  private String getServerName(ExtensionContext context, ParameterContext parameterContext) {
-    return getClassName(context) + getParameterName(parameterContext);
-  }
-
-  private static WireMock getOrCreateWiremock(int port) {
-    try {
-      wiremockMapLock.lock();
-
-      if (wiremockMap.containsKey(port)) {
-        return wiremockMap.get(port);
-      }
-
-      WireMock instance = new WireMock("localhost", port);
-
-      wiremockMap.put(port, instance);
-
-      return instance;
-    } finally {
-      wiremockMapLock.unlock();
-    }
+        .forEach(consumer);
   }
 
   private WireMockServer setupWiremockServer(String name, KnotxWiremock knotxWiremock) {
@@ -186,15 +249,13 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
     String name = config.name;
 
     try {
-      wiremockMapLock.lock();
+      globalMapsLock.lock();
 
-      // rule: same name == same config, so was created before
-      if (serviceNamePortMap.containsKey(name)) {
-        return wiremockServerMap.get(serviceNamePortMap.get(name).port);
+      if (serviceNameToServerMap.containsKey(name)) {
+        return portToServerMap.get(serviceNameToServerMap.get(name).port());
       }
-
-      if (wiremockServerMap.containsKey(port)) {
-        return wiremockServerMap.get(port);
+      if (portToServerMap.containsKey(port)) {
+        return portToServerMap.get(port);
       }
 
       WireMockConfiguration wireMockConfiguration = new WireMockConfiguration();
@@ -206,61 +267,36 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
         wireMockConfiguration.port(port);
       }
 
-      WireMockServer server = new WireMockServer(wireMockConfiguration);
+      KnotxWiremockServer server = new KnotxWiremockServer(wireMockConfiguration);
       server.start();
 
       port = server.port();
       config = new KnotxMockConfig(config, port);
-      getOrCreateWiremock(port);
+      server.setMockConfig(config);
+      server.setWireMock(getOrCreateWiremock(port));
 
-      wiremockServerMap.put(port, server);
-      serviceNamePortMap.put(name, config);
+      portToServerMap.put(port, server);
+      serviceNameToServerMap.put(name, server);
 
       return server;
     } finally {
-      wiremockMapLock.unlock();
+      globalMapsLock.unlock();
     }
   }
 
   private void shutdownWiremock() {
-    wiremockMapLock.lock();
+    globalMapsLock.lock();
 
     // calling WireMock.shutdown() would shutdown only the default instance
-    wiremockServerMap.forEach((port, server) -> server.shutdown());
-    wiremockServerMap.clear();
-    wiremockMap.clear();
-    serviceNamePortMap.clear();
+    portToServerMap.forEach(
+        (port, server) -> {
+          if (server.isRunning()) {
+            server.shutdown();
+          }
+        });
+    portToServerMap.clear();
+    serviceNameToServerMap.clear();
 
-    wiremockMapLock.unlock();
-  }
-
-  @Override
-  public void addToOverrides(Config config, List<JsonObject> overrides, String forClass) {
-    Map<String, Object> serversConfig = new HashMap<>();
-
-    try {
-      wiremockMapLock.lock();
-
-      // get entries for given class, trim class name for results
-      serviceNamePortMap
-          .values()
-          .stream()
-          .filter(mockConfig -> mockConfig.name.startsWith(forClass))
-          .forEach(
-              mockConfig -> {
-                String trimmed = mockConfig.name.substring(forClass.length());
-                serversConfig.put(trimmed, ImmutableMap.of("port", mockConfig.port));
-              });
-    } finally {
-      wiremockMapLock.unlock();
-    }
-
-    if (serversConfig.isEmpty()) {
-      return;
-    }
-
-    JsonObject json = new JsonObject();
-    json.put("test", ImmutableMap.of("wiremock", serversConfig));
-    overrides.add(json);
+    globalMapsLock.unlock();
   }
 }

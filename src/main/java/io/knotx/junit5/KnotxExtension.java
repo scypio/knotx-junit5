@@ -83,12 +83,14 @@ public class KnotxExtension extends KnotxBaseExtension
   private static final long DEFAULT_TIMEOUT_SECONDS = 30;
   private static final String VERTX_INSTANCE_STORE_KEY = "VertxInstance";
 
+  private static final String PORT = "port";
   private static final String HOCON_EXTENSION = "conf";
   private static final String JSON_EXTENSION = "json";
   private static final String RANDOM_GEN_NAMESPACE = "test.random";
+
   private static final ReadWriteLock referenceMapLock = new ReentrantReadWriteLock(true);
   private static final Map<String, Integer> referencePortMap = new HashMap<>();
-  public static final String PORT = "port";
+
   private final VertxExtension vertxExtension = new VertxExtension();
   private final KnotxWiremockExtension wiremockExtension = new KnotxWiremockExtension();
 
@@ -257,6 +259,10 @@ public class KnotxExtension extends KnotxBaseExtension
 
       String forClass = getClassName(extensionContext);
       String forMethod = getMethodName(parameterContext);
+
+      // required when tests are executed in parallel
+      // some map references go missing and need to be reconstructed
+      wiremockExtension.addMissingInstanceServers(forClass, extensionContext);
 
       loadKnotxConfig(vertx, knotxConfigs, forClass, forMethod);
 

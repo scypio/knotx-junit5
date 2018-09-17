@@ -17,6 +17,7 @@ package io.knotx.junit5;
 
 import com.typesafe.config.Config;
 import io.vertx.core.json.JsonObject;
+import java.lang.reflect.Field;
 import java.util.List;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
@@ -47,4 +48,12 @@ public abstract class KnotxBaseExtension {
   }
 
   public void addToOverrides(Config config, List<JsonObject> overrides, String forReference) {}
+
+  protected String getClassFieldName(ExtensionContext context, Field field) {
+    return getClassName(context) + field.getName();
+  }
+
+  protected String getClassFieldName(ExtensionContext context, ParameterContext parameterContext) {
+    return getClassName(context) + getParameterName(parameterContext);
+  }
 }
