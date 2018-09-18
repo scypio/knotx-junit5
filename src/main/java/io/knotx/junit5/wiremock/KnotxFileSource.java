@@ -43,9 +43,11 @@ class KnotxFileSource extends ResponseTransformer {
           "txt", "text/plain");
 
   private boolean autodetectMime;
+  private final KnotxMockConfig config;
 
   public KnotxFileSource(KnotxMockConfig config) {
     autodetectMime = KnotxMockConfig.MIMETYPE_AUTODETECT.equals(config.mimetype);
+    this.config = config;
   }
 
   @Override

@@ -28,9 +28,11 @@ import io.vertx.core.json.JsonObject;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.extension.AfterAllCallback;
@@ -46,6 +48,8 @@ import org.junit.jupiter.api.extension.TestInstancePostProcessor;
  */
 public class KnotxWiremockExtension extends KnotxBaseExtension
     implements ParameterResolver, TestInstancePostProcessor, AfterAllCallback {
+
+  static final String WIREMOCK_NAMESPACE = "test.wiremock";
 
   private static final ReentrantLock globalMapsLock = new ReentrantLock(true);
   private static final HashMap<Integer, KnotxWiremockServer> portToServerMap = new HashMap<>();
@@ -186,6 +190,19 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
 
   @Override
   public void addToOverrides(Config config, List<JsonObject> overrides, String forClass) {
+    if (!config.hasPath(WIREMOCK_NAMESPACE)) {
+      return;
+    }
+
+    Set<String> services = new HashSet<>(config.atKey(WIREMOCK_NAMESPACE).root().keySet());
+
+    // build KnotxMockConfig objects from
+    for (String service : services) {
+      KnotxMockConfig.createMockConfig(config, forClass, service);
+
+
+    }
+
     Map<String, Object> serversConfig = new HashMap<>();
 
     try {
