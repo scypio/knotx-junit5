@@ -118,6 +118,7 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
   @Override
   public void afterAll(ExtensionContext context) {
     // fixme: mocks are shut down before all execution ends in parallel environment
+    // fixme: proper fix is to implement #17 and launch new mock instance for each test
     //shutdownWiremock();
   }
 
