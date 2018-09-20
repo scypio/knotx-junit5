@@ -24,8 +24,11 @@ import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.Config;
 import io.knotx.junit5.KnotxBaseExtension;
 import io.knotx.junit5.KnotxExtension;
+import io.knotx.junit5.util.HoconUtil;
 import io.vertx.core.json.JsonObject;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,6 +38,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
@@ -55,6 +60,7 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
   private static final HashMap<Integer, KnotxWiremockServer> portToServerMap = new HashMap<>();
   private static final HashMap<String, KnotxWiremockServer> serviceNameToServerMap =
       new HashMap<>();
+  private final HashMap<String, KnotxWiremockServer> localInstanceServers = new HashMap<>();
 
   /**
    * Retrieve Wiremock for given port and add given mappings
@@ -122,8 +128,22 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
   @Override
   public void afterAll(ExtensionContext context) {
     // fixme: mocks are shut down before all execution ends in parallel environment
-    // fixme: proper fix is to implement #17 and launch new mock instance for each test
-    //shutdownWiremock();
+    // fixme: proper fix is to implement #17 and launch separate mock instance for each test
+    globalMapsLock.lock();
+
+    // cleanup our local instances, operate only on port numbers as they're unique
+    localInstanceServers.forEach(
+        (service, server) -> {
+          if (server.isRunning()) {
+            server.shutdown();
+          }
+
+          int port = server.getMockConfig().port;
+          portToServerMap.remove(port);
+          serviceNameToServerMap.values().removeIf(s -> s.getMockConfig().port == port);
+        });
+
+    globalMapsLock.unlock();
   }
 
   /** Sets up all annotated fields in test class */
@@ -137,9 +157,11 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
     forEachWiremockFields(
         testClass.get(),
         field -> {
-          String name = getClassFieldName(context, field);
-          WireMockServer server =
-              setupWiremockServer(name, field.getAnnotation(KnotxWiremock.class));
+          String reference = getClassFieldName(context, field);
+          KnotxWiremock wiremockAnnotation = field.getAnnotation(KnotxWiremock.class);
+
+          // checkme: use existing servers for given reference
+          WireMockServer server = setupWiremockServer(reference, wiremockAnnotation);
 
           field.setAccessible(true);
           try {
@@ -163,29 +185,37 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
 
     Class<?> testClass = context.getRequiredTestClass();
 
-    forEachWiremockFields(
-        testClass,
-        field -> {
-          String name = getClassFieldName(context, field);
+    try {
+      globalMapsLock.lock();
 
-          try {
-            field.setAccessible(true);
-            Object wiremockObject = field.get(instance.get());
-            KnotxWiremockServer wiremockServer;
+      forEachWiremockFields(
+          testClass,
+          field -> {
+            String name = getClassFieldName(context, field);
 
-            if (wiremockObject instanceof KnotxWiremockServer) {
-              wiremockServer = ((KnotxWiremockServer) wiremockObject);
+            try {
+              field.setAccessible(true);
+              Object wiremockObject = field.get(instance.get());
+              KnotxWiremockServer wiremockServer;
 
-              int port = wiremockServer.port();
+              if (wiremockObject instanceof KnotxWiremockServer) {
+                wiremockServer = ((KnotxWiremockServer) wiremockObject);
 
-              portToServerMap.put(port, wiremockServer);
-              serviceNameToServerMap.put(name, wiremockServer);
+                int port = wiremockServer.port();
+
+                // DON'T YOU EVEN DARE TO PUT THIS WIREMOCK INTO LOCAL INSTANCES MAP
+                portToServerMap.put(port, wiremockServer);
+                serviceNameToServerMap.put(name, wiremockServer);
+              }
+            } catch (IllegalAccessException e) {
+              throw new IllegalStateException(
+                  "Could not retrieve WireMockServer field value on alternative fork", e);
             }
-          } catch (IllegalAccessException e) {
-            throw new IllegalStateException(
-                "Could not retrieve WireMockServer field value on alternative fork", e);
-          }
-        });
+          });
+
+    } finally {
+      globalMapsLock.unlock();
+    }
   }
 
   @Override
@@ -198,9 +228,53 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
 
     // build KnotxMockConfig objects from
     for (String service : services) {
-      KnotxMockConfig.createMockConfig(config, forClass, service);
+      String base = KnotxWiremockExtension.WIREMOCK_NAMESPACE + "." + service;
+      String reference = forClass + service;
 
+      KnotxMockConfig mockConfig = KnotxMockConfig.createMockConfig(config, reference, base);
+      WireMockServer server = setupWiremockServer(mockConfig);
 
+      if (StringUtils.isEmpty(mockConfig.callToConfigure)) {
+        String[] httpMethods =
+            HoconUtil.getStringOrDefault(config, base + ".httpMethods", "GET").split("[|]");
+
+        for (String method : httpMethods) {
+          MappingBuilder builder;
+
+          if ("GET".equalsIgnoreCase(method)) {
+            builder =
+                WireMock.get(WireMock.urlMatching(mockConfig.urlMatching))
+                    .willReturn(WireMock.aResponse().withHeaders(mockConfig.additionalHeaders));
+
+            stubForServer(server, builder);
+          } else if ("POST".equalsIgnoreCase(method)) {
+            builder =
+                WireMock.post(WireMock.urlMatching(mockConfig.urlMatching))
+                    .willReturn(WireMock.aResponse().withHeaders(mockConfig.additionalHeaders));
+
+            stubForServer(server, builder);
+          }
+        }
+      } else {
+        // callToConfigure must be like: io.whatever.ClassName#methodName
+        String clazzName = StringUtils.substringBefore(mockConfig.callToConfigure, "#");
+        String methodName = StringUtils.substringAfter(mockConfig.callToConfigure, "#");
+        Method method;
+
+        try {
+          Class<?> clazz = Class.forName(clazzName);
+
+          method = clazz.getMethod(methodName, WireMockServer.class);
+        } catch (ClassNotFoundException | NoSuchMethodException e) {
+          throw new IllegalArgumentException("Class/method to invoke could not be found", e);
+        }
+
+        try {
+          method.invoke(null, server);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+          throw new IllegalStateException("Failed to invoke configure method for given server", e);
+        }
+      }
     }
 
     Map<String, Object> serversConfig = new HashMap<>();
@@ -208,15 +282,17 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
     try {
       globalMapsLock.lock();
 
+      Stream<KnotxWiremockServer> stream =
+          Stream.concat(
+              serviceNameToServerMap.values().stream(), localInstanceServers.values().stream());
+
       // get entries for given class, trim class name for results
-      serviceNameToServerMap
-          .values()
-          .stream()
+      stream
           .map(KnotxWiremockServer::getMockConfig)
-          .filter(mockConfig -> mockConfig.name.startsWith(forClass))
+          .filter(mockConfig -> mockConfig.reference.startsWith(forClass))
           .forEach(
               mockConfig -> {
-                String trimmed = mockConfig.name.substring(forClass.length());
+                String trimmed = mockConfig.reference.substring(forClass.length());
                 serversConfig.put(trimmed, ImmutableMap.of("port", mockConfig.port));
               });
     } finally {
@@ -257,20 +333,23 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
         .forEach(consumer);
   }
 
-  private WireMockServer setupWiremockServer(String name, KnotxWiremock knotxWiremock) {
-    KnotxMockConfig config = new KnotxMockConfig(name, knotxWiremock.port());
+  private WireMockServer setupWiremockServer(String reference, KnotxWiremock knotxWiremock) {
+    KnotxMockConfig config = new KnotxMockConfig(reference, knotxWiremock.port());
     return setupWiremockServer(config);
   }
 
   private WireMockServer setupWiremockServer(KnotxMockConfig config) {
     int port = config.port;
-    String name = config.name;
+    String reference = config.reference;
 
     try {
       globalMapsLock.lock();
 
-      if (serviceNameToServerMap.containsKey(name)) {
-        return portToServerMap.get(serviceNameToServerMap.get(name).port());
+      if (localInstanceServers.containsKey(reference)) {
+        return localInstanceServers.get(reference);
+      }
+      if (serviceNameToServerMap.containsKey(reference)) {
+        return portToServerMap.get(serviceNameToServerMap.get(reference).port());
       }
       if (portToServerMap.containsKey(port)) {
         return portToServerMap.get(port);
@@ -294,27 +373,12 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
       server.setWireMock(getOrCreateWiremock(port));
 
       portToServerMap.put(port, server);
-      serviceNameToServerMap.put(name, server);
+      serviceNameToServerMap.put(reference, server);
+      localInstanceServers.put(reference, server);
 
       return server;
     } finally {
       globalMapsLock.unlock();
     }
-  }
-
-  private void shutdownWiremock() {
-    globalMapsLock.lock();
-
-    // calling WireMock.shutdown() would shutdown only the default instance
-    portToServerMap.forEach(
-        (port, server) -> {
-          if (server.isRunning()) {
-            server.shutdown();
-          }
-        });
-    portToServerMap.clear();
-    serviceNameToServerMap.clear();
-
-    globalMapsLock.unlock();
   }
 }
