@@ -15,6 +15,9 @@
  */
 package io.knotx.junit5.wiremock;
 
+import static io.knotx.junit5.util.ReflectUtil.forEachWiremockFields;
+import static io.knotx.junit5.util.StreamUtil.anyKeyStartsWith;
+
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.MappingBuilder;
 import com.github.tomakehurst.wiremock.client.WireMock;
@@ -25,11 +28,9 @@ import com.typesafe.config.Config;
 import io.knotx.junit5.KnotxBaseExtension;
 import io.knotx.junit5.KnotxExtension;
 import io.knotx.junit5.util.HoconUtil;
+import io.knotx.junit5.util.ReflectUtil;
+import io.knotx.junit5.util.StreamUtil;
 import io.vertx.core.json.JsonObject;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -37,7 +38,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.extension.AfterAllCallback;
@@ -112,10 +112,7 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
     Class<?> type = getType(parameterContext);
 
     if (type == WireMockServer.class) {
-      KnotxWiremock knotxWiremock =
-          parameterContext
-              .findAnnotation(KnotxWiremock.class)
-              .orElseThrow(IllegalStateException::new);
+      KnotxWiremock knotxWiremock = ReflectUtil.getWiremockAnnotation(parameterContext);
 
       String name = getClassFieldName(extensionContext, parameterContext);
 
@@ -138,6 +135,7 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
             server.shutdown();
           }
 
+          // remove instances from global map
           int port = server.getMockConfig().port;
           portToServerMap.remove(port);
           serviceNameToServerMap.values().removeIf(s -> s.getMockConfig().port == port);
@@ -160,16 +158,9 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
           String reference = getClassFieldName(context, field);
           KnotxWiremock wiremockAnnotation = field.getAnnotation(KnotxWiremock.class);
 
-          // checkme: use existing servers for given reference
           WireMockServer server = setupWiremockServer(reference, wiremockAnnotation);
 
-          field.setAccessible(true);
-          try {
-            field.set(testInstance, server);
-          } catch (IllegalAccessException | IllegalArgumentException e) {
-            throw new IllegalStateException(
-                "Could not inject wiremock server into requested field", e);
-          }
+          ReflectUtil.setField(testInstance, field, server);
         });
   }
 
@@ -179,7 +170,10 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
     if (!instance.isPresent()) {
       return;
     }
-    if (serviceNameToServerMap.keySet().stream().anyMatch(s -> s.startsWith(forClass))) {
+    if (anyKeyStartsWith(localInstanceServers, forClass)) {
+      return;
+    }
+    if (anyKeyStartsWith(serviceNameToServerMap, forClass)) {
       return;
     }
 
@@ -193,23 +187,17 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
           field -> {
             String name = getClassFieldName(context, field);
 
-            try {
-              field.setAccessible(true);
-              Object wiremockObject = field.get(instance.get());
-              KnotxWiremockServer wiremockServer;
+            Object wiremockObject = ReflectUtil.fieldValue(instance.get(), field);
+            KnotxWiremockServer wiremockServer;
 
-              if (wiremockObject instanceof KnotxWiremockServer) {
-                wiremockServer = ((KnotxWiremockServer) wiremockObject);
+            if (wiremockObject instanceof KnotxWiremockServer) {
+              wiremockServer = ((KnotxWiremockServer) wiremockObject);
 
-                int port = wiremockServer.port();
+              int port = wiremockServer.port();
 
-                // DON'T YOU EVEN DARE TO PUT THIS WIREMOCK INTO LOCAL INSTANCES MAP
-                portToServerMap.put(port, wiremockServer);
-                serviceNameToServerMap.put(name, wiremockServer);
-              }
-            } catch (IllegalAccessException e) {
-              throw new IllegalStateException(
-                  "Could not retrieve WireMockServer field value on alternative fork", e);
+              // DON'T YOU EVEN DARE TO PUT THIS WIREMOCK INSTANCE INTO LOCAL INSTANCES MAP
+              portToServerMap.put(port, wiremockServer);
+              serviceNameToServerMap.put(name, wiremockServer);
             }
           });
 
@@ -232,7 +220,7 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
       String reference = forClass + service;
 
       KnotxMockConfig mockConfig = KnotxMockConfig.createMockConfig(config, reference, base);
-      WireMockServer server = setupWiremockServer(mockConfig);
+      KnotxWiremockServer server = setupWiremockServer(mockConfig);
 
       if (StringUtils.isEmpty(mockConfig.callToConfigure)) {
         String[] httpMethods =
@@ -257,23 +245,7 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
         }
       } else {
         // callToConfigure must be like: io.whatever.ClassName#methodName
-        String clazzName = StringUtils.substringBefore(mockConfig.callToConfigure, "#");
-        String methodName = StringUtils.substringAfter(mockConfig.callToConfigure, "#");
-        Method method;
-
-        try {
-          Class<?> clazz = Class.forName(clazzName);
-
-          method = clazz.getMethod(methodName, WireMockServer.class);
-        } catch (ClassNotFoundException | NoSuchMethodException e) {
-          throw new IllegalArgumentException("Class/method to invoke could not be found", e);
-        }
-
-        try {
-          method.invoke(null, server);
-        } catch (IllegalAccessException | InvocationTargetException e) {
-          throw new IllegalStateException("Failed to invoke configure method for given server", e);
-        }
+        ReflectUtil.configureServerViaMethod(server);
       }
     }
 
@@ -283,8 +255,7 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
       globalMapsLock.lock();
 
       Stream<KnotxWiremockServer> stream =
-          Stream.concat(
-              serviceNameToServerMap.values().stream(), localInstanceServers.values().stream());
+          StreamUtil.concatValues(serviceNameToServerMap, localInstanceServers);
 
       // get entries for given class, trim class name for results
       stream
@@ -322,23 +293,12 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
     }
   }
 
-  private void forEachWiremockFields(Class<?> testClass, Consumer<Field> consumer) {
-    Field[] fields = testClass.getDeclaredFields();
-
-    Arrays.stream(fields)
-        .filter(
-            field ->
-                field.isAnnotationPresent(KnotxWiremock.class)
-                    && field.getType().equals(WireMockServer.class))
-        .forEach(consumer);
-  }
-
-  private WireMockServer setupWiremockServer(String reference, KnotxWiremock knotxWiremock) {
+  private KnotxWiremockServer setupWiremockServer(String reference, KnotxWiremock knotxWiremock) {
     KnotxMockConfig config = new KnotxMockConfig(reference, knotxWiremock.port());
     return setupWiremockServer(config);
   }
 
-  private WireMockServer setupWiremockServer(KnotxMockConfig config) {
+  private KnotxWiremockServer setupWiremockServer(KnotxMockConfig config) {
     int port = config.port;
     String reference = config.reference;
 

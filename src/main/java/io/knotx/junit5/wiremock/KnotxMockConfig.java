@@ -32,19 +32,19 @@ import org.apache.commons.lang3.StringUtils;
  * Representation of {@linkplain WireMockServer}'s configurations stored in {@linkplain
  * KnotxWiremockExtension}.
  */
-class KnotxMockConfig {
+public class KnotxMockConfig {
   static final String PATH_INHERIT = "!inherit";
   static final String MIMETYPE_AUTODETECT = "!autodetect";
   static final String URL_MATCHING_ALL = ".*";
   static final int RANDOM_PORT = Options.DYNAMIC_PORT;
 
-  final String reference;
-  final int port;
-  final String prependRequestPath;
-  final String urlMatching;
-  final String mimetype;
-  final HttpHeaders additionalHeaders;
-  final String callToConfigure;
+  public final String reference;
+  public final int port;
+  public final String prependRequestPath;
+  public final String urlMatching;
+  public final String mimetype;
+  public final HttpHeaders additionalHeaders;
+  public final String callToConfigure;
 
   KnotxMockConfig(String reference, int port) {
     this.reference = reference;

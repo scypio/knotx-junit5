@@ -32,7 +32,8 @@ public class KnotxWiremockServer extends WireMockServer {
     super(options);
   }
 
-  KnotxMockConfig getMockConfig() {
+
+  public KnotxMockConfig getMockConfig() {
     return mockConfig;
   }
 
@@ -44,7 +45,7 @@ public class KnotxWiremockServer extends WireMockServer {
     return wireMock;
   }
 
-  public void setWireMock(WireMock wireMock) {
+  void setWireMock(WireMock wireMock) {
     this.wireMock = wireMock;
   }
 }
