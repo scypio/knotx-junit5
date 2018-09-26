@@ -17,10 +17,10 @@ package io.knotx.junit5;
 
 import io.knotx.junit5.wiremock.KnotxWiremock;
 import io.knotx.junit5.wiremock.KnotxWiremockExtension;
-import io.knotx.launcher.KnotxStarterVerticle;
 import io.vertx.config.ConfigRetrieverOptions;
 import io.vertx.config.ConfigStoreOptions;
 import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Verticle;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxException;
 import io.vertx.core.json.JsonObject;
@@ -42,6 +42,7 @@ import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
 import org.junit.jupiter.api.extension.TestInstancePostProcessor;
+import org.junit.jupiter.api.extension.TestInstantiationException;
 
 /**
  * Support for field and parameter injection for Knot.x tests <br>
@@ -217,7 +218,9 @@ public class KnotxExtension extends KnotxBaseExtension
     }
   }
 
-  /** Load Knot.x config from given resource and apply it to Vertx instance */
+  /**
+   * Load Knot.x config from given resource and apply it to Vertx instance
+   */
   private void loadKnotxConfig(Vertx vertx, KnotxApplyConfiguration knotxConfig, String forClass) {
     if (knotxConfig == null) {
       throw new IllegalArgumentException(
@@ -226,22 +229,28 @@ public class KnotxExtension extends KnotxBaseExtension
 
     CompletableFuture<Void> toComplete = new CompletableFuture<>();
 
-    vertx.deployVerticle(
-        KnotxStarterVerticle.class,
-        createConfig(knotxConfig.value(), forClass),
-        ar -> {
-          if (ar.succeeded()) {
-            toComplete.complete(null);
-          } else {
-            toComplete.completeExceptionally(ar.cause());
-          }
-        });
-
     try {
+      final Class<? extends Verticle> knotxStarterVerticleClass = (Class<? extends Verticle>) Class
+          .forName("io.knotx.launcher.KnotxStarterVerticle");
+
+      vertx.deployVerticle(
+          knotxStarterVerticleClass,
+          createConfig(knotxConfig.value(), forClass),
+          ar -> {
+            if (ar.succeeded()) {
+              toComplete.complete(null);
+            } else {
+              toComplete.completeExceptionally(ar.cause());
+            }
+          });
+
       toComplete.get();
     } catch (ExecutionException ignore) {
     } catch (InterruptedException e) {
       throw new ParameterResolutionException("Couldn't create Knot.x configuration", e);
+    } catch (ClassNotFoundException e) {
+      throw new TestInstantiationException(
+          "Couldn't find class KnotxStarterVerticle on the classpath", e);
     }
   }
 

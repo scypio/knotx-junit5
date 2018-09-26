@@ -15,9 +15,7 @@
  */
 package io.knotx.junit5;
 
-import io.knotx.dataobjects.Fragment;
 import io.vertx.core.json.JsonObject;
-import java.io.IOException;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.converter.ArgumentConversionException;
 import org.junit.jupiter.params.converter.SimpleArgumentConverter;
@@ -34,17 +32,8 @@ public class KnotxArgumentConverter extends SimpleArgumentConverter {
       throw new ArgumentConversionException("This converter supports only String as source object");
     }
 
-    String toConvert = String.valueOf(source);
-
-    if (targetType.equals(Fragment.class)) {
-      try {
-        return KnotxConverters.createFragmentMock(toConvert);
-      } catch (IOException e) {
-        throw new ArgumentConversionException("Exception thrown during conversion", e);
-      }
-    }
     if (targetType.equals(JsonObject.class)) {
-      return KnotxConverters.createJsonObject(toConvert);
+      return new JsonObject(String.valueOf(source));
     }
 
     throw new ArgumentConversionException(
