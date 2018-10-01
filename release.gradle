@@ -19,6 +19,45 @@ publishing {
       from components.java
       artifact sourcesJar
       artifact javadocJar
+
+      pom {
+        name = 'Knot.x junit5'
+        description = 'Testing Knot.x with JUnit 5'
+        url = 'http://knotx.io/'
+        licenses {
+          license {
+            name = 'The Apache License, Version 2.0'
+            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+          }
+        }
+        developers {
+          developer {
+            id = 'marcinczeczko'
+            name = 'Marcin Czeczko'
+            url = 'https://github.com/marcinczeczko'
+          }
+          developer {
+            id = 'skejven'
+            name = 'Maciej Laskowski'
+            url = 'https://github.com/Skejven'
+          }
+          developer {
+            id = 'tomaszmichalak'
+            name = 'Tomasz Michalak'
+            url = 'https://github.com/tomaszmichalak'
+          }
+          developer {
+            id = 'tMaxx'
+            name = 'Mikolaj Wawrowski'
+            url = 'http://nmaxx.pl/'
+          }
+        }
+        scm {
+          connection = 'scm:git:git://github.com/Knotx/knotx-junit5.git'
+          developerConnection = 'scm:git:ssh://github.com:Knotx/knotx-junit5.git'
+          url = 'http://github.com/Knotx/knotx-junit5/tree/master'
+        }
+      }
     }
   }
   repositories {
