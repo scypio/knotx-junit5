@@ -93,7 +93,7 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
     Class<?> type = getType(parameterContext);
 
     if (parameterContext.getParameter().isAnnotationPresent(KnotxWiremock.class)) {
-      if (type.equals(WireMockServer.class)) {
+      if (type.equals(WireMockServer.class) || type.equals(Integer.class)) {
         return true;
       }
       if (type.equals(String.class)) {
@@ -111,12 +111,18 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
       throws ParameterResolutionException {
     Class<?> type = getType(parameterContext);
 
-    if (type == WireMockServer.class) {
+    if (type.equals(WireMockServer.class) || type.equals(Integer.class)) {
       KnotxWiremock knotxWiremock = ReflectUtil.getWiremockAnnotation(parameterContext);
 
       String name = getClassFieldName(extensionContext, parameterContext);
 
-      return setupWiremockServer(name, knotxWiremock);
+      KnotxWiremockServer server = setupWiremockServer(name, knotxWiremock);
+
+      if (type.equals(WireMockServer.class)) {
+        return server;
+      } else {
+        return server.getMockConfig().port;
+      }
     }
 
     throw new IllegalStateException("This should not happen");
@@ -124,8 +130,6 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
 
   @Override
   public void afterAll(ExtensionContext context) {
-    // fixme: mocks are shut down before all execution ends in parallel environment
-    // fixme: proper fix is to implement #17 and launch separate mock instance for each test
     globalMapsLock.lock();
 
     // cleanup our local instances, operate only on port numbers as they're unique
@@ -244,7 +248,7 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
           }
         }
       } else {
-        // callToConfigure must be like: io.whatever.ClassName#methodName
+        // callToConfigure must be in format: io.whatever.ClassName#methodName
         ReflectUtil.configureServerViaMethod(server);
       }
     }

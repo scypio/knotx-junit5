@@ -91,15 +91,17 @@ public class KnotxMockConfig {
     Map<String, Object> headers;
     String callMethod;
 
+    final String path = base + ".port";
+
     // get port only if it's integer and not null
-    if (config.hasPathOrNull(base + ".port")
-        && !config.getIsNull(base + ".port")
-        && config.getAnyRef(base + ".port") instanceof Integer) {
-      port = config.getInt(base + ".port");
+    if (config.hasPathOrNull(path)
+        && !config.getIsNull(path)
+        && config.getAnyRef(path) instanceof Integer) {
+      port = config.getInt(path);
     }
 
     prependRequestPath =
-        getStringOrDefault(config, base + ".prependRequestPath", StringUtils.EMPTY);
+        getStringOrDefault(config, base + ".prependRequestFilePath", StringUtils.EMPTY);
     urlMatching = getStringOrDefault(config, base + ".urlMatching", URL_MATCHING_ALL);
     mimetype = getStringOrDefault(config, base + ".mimetype", MIMETYPE_AUTODETECT);
     headers = getObjectOrDefault(config, base + ".additionalHeaders", Collections.emptyMap());

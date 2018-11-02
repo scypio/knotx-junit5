@@ -49,7 +49,6 @@ tasks.withType(JavaCompile) {
   options.incremental = true
 }
 
-
 dependencies {
   compile 'io.vertx:vertx-core'
   compile 'io.vertx:vertx-service-proxy'

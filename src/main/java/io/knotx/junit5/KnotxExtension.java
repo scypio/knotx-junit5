@@ -341,6 +341,7 @@ public class KnotxExtension extends KnotxBaseExtension
   }
 
   /** Load Knot.x config from given resource and apply it to Vertx instance */
+  @SuppressWarnings("unchecked")
   private void loadKnotxConfig(Vertx vertx, List<String> paths, String forClass, String forMethod) {
     pathsCorrectnessGuard(paths);
 
