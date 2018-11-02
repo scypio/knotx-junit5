@@ -51,6 +51,10 @@ will overwrite the value provided by the previous configuration files.
 See [Vert.x Config overloading rules](https://vertx.io/docs/vertx-config/java/#_overloading_rules) 
 for more details.
 
+KnotxApplyConfiguration annotation can be placed on class, method, and parameter level. As such, configuration for
+parameter level will override method and class level, and method will override class level. For quick example see
+test package namespace `io.knotx.junit5.example`.
+
 #### KnotxConcatConfigProcessor
 
 This implementation of Vert.x [ConfigProcessor](https://vertx.io/docs/vertx-config/java/#_extending_the_config_retriever)
@@ -163,12 +167,32 @@ KnotxConcatConfigProcessor works around this problem. It creates a new config fo
 }
 ```
 
-Files from `paths` are loaded in given order, and each override from `overrides` (JSON object) is applied 
+Files from `paths` are loaded in given order, and each override object from `overrides` (JSON object) is applied 
 on top of resulting HOCON Config object, and only then
 the configuration gets resolved and effectively returned for Knot.x for processing.
 
 Please refer to [HOCON readme](https://github.com/lightbend/config/blob/master/README.md) if you have any more questions regarding config loading
 behavior.
+
+#### Randomizing ports for usage inside tests
+
+If you want to randomize a port for using inside your test, you can define a namespace inside your HOCON config:
+
+```hocon
+test {
+  # random values generation section
+  random {
+    # all <name>.port entries will be substituted for different random ports
+    globalServer.port = 12345
+    actionAdapterService.port = 12345
+  }
+}
+```
+(example taken from `example_config.conf` file)
+
+Then you can reference such variables from anywhere inside your configs; placeholder values will be substituted for real available
+port numbers. For an example how to reference such values see `io.knotx.junit5.examples.ExampleKnotxJUnit5Test#injectRandomizedPort`
+method from test classes.
 
 ### KnotxWiremockExtension
 
@@ -261,6 +285,21 @@ public class ParameterizedTest {
   }
 }
 ```
+
+## Frequently asked questions
+
+#### Is parallel test execution possible?
+
+Currently not supported due to unknown Knot.x internal error that ends up in a segfault. However, all required functionality
+is implemented inside `knotx-junit5` module.
+
+#### Where can I find real examples how to use this extension?
+
+Some simple examples are available in test package namespace `io.knotx.junit5.example`.  
+For other use cases see following Knot.x projects that use this Knot.x JUnit5 module:
+- [Knot.x Stack](https://github.com/Knotx/knotx-stack)
+- [Knot.x Data Bridge](https://github.com/Knotx/knotx-data-bridge)
+- [Knot.x Core](https://github.com/Cognifide/knotx)
 
 ## Bugs
 All feature requests and bugs can be filed as issues on [Gitub](https://github.com/Knotx/knotx-junit5/issues).
