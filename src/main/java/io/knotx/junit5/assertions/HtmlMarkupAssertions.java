@@ -1,7 +1,5 @@
 package io.knotx.junit5.assertions;
 
-import static java.lang.Character.isWhitespace;
-
 import java.nio.charset.StandardCharsets;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -31,10 +29,6 @@ public final class HtmlMarkupAssertions {
     Assertions.assertEquals(expectedBodyMarkup, actualBodyMarkup, message);
   }
 
-  private static String escapeAndFormat(String expected) {
-    return stripSpace(getFormattedBodyOfAFullPage(expected));
-  }
-
   private static String getFormattedBodyOfAFullPage(String html) {
     return Jsoup.parse(html, StandardCharsets.UTF_8.name(), Parser.xmlParser())
         .outputSettings(OUTPUT_SETTINGS)
@@ -42,23 +36,4 @@ public final class HtmlMarkupAssertions {
         .html()
         .trim();
   }
-
-  private static String stripSpace(String toBeStripped) {
-    final StringBuilder result = new StringBuilder();
-    boolean lastWasSpace = true;
-    for (int i = 0; i < toBeStripped.length(); i++) {
-      char c = toBeStripped.charAt(i);
-      if (isWhitespace(c)) {
-        if (!lastWasSpace) {
-          result.append(' ');
-        }
-        lastWasSpace = true;
-      } else {
-        result.append(c);
-        lastWasSpace = false;
-      }
-    }
-    return result.toString().trim();
-  }
-
 }
