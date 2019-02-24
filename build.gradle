@@ -67,6 +67,7 @@ dependencies {
 
   compile 'me.alexpanov:free-port-finder'
   compile 'commons-io:commons-io'
+  compile 'org.jsoup:jsoup'
 }
 
 test {
