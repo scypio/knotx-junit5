@@ -1,5 +1,7 @@
 package io.knotx.junit5;
 
+import static io.restassured.RestAssured.given;
+
 import com.github.tomakehurst.wiremock.WireMockServer;
 import io.knotx.junit5.wiremock.KnotxWiremock;
 import org.junit.jupiter.api.Assertions;
@@ -8,15 +10,16 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-@Disabled
 @ExtendWith(KnotxExtension.class)
 class KnotxExtensionTest {
 
+  @Disabled
   @Test
-  @DisplayName("Exception when applying configuration to test method without Vert.x instance.")
-  void noApplyConfigurationWithoutCoreVertx() {
+  @DisplayName("Exception when test method is not annotated with @KnotxApplyConfiguration")
+  void noApplyConfiguration() {
   }
 
+  @Disabled
   @Test
   @DisplayName("Exception when applying configuration to test method without Vert.x instance.")
   @KnotxApplyConfiguration("simple.conf")
@@ -24,6 +27,7 @@ class KnotxExtensionTest {
     Assertions.fail("Test should not init properly");
   }
 
+  @Disabled
   @Test
   @DisplayName("Success when applying configuration to test method with Vert.x instance.")
   @KnotxApplyConfiguration("simple.conf")
@@ -31,6 +35,7 @@ class KnotxExtensionTest {
     Assertions.assertTrue(true);
   }
 
+  @Disabled
   @Test
   @DisplayName("Success when applying configuration to test method with Vert.x instance Rx delegate.")
   @KnotxApplyConfiguration("simple.conf")
@@ -38,6 +43,7 @@ class KnotxExtensionTest {
     Assertions.assertTrue(true);
   }
 
+  @Disabled
   @Test
   @DisplayName("Exception when applying configuration to test method with Vert.x instance RxJava 1 delegate.")
   @KnotxApplyConfiguration("simple.conf")
@@ -46,13 +52,21 @@ class KnotxExtensionTest {
   }
 
   @Test
-  @DisplayName("Static port when applying configuration.")
-  @KnotxApplyConfiguration("simple.conf")
+  @DisplayName("Expect response from mock server working on a random port.")
+  @KnotxApplyConfiguration("modules.conf")
   void loadConfigurationWithStaticPort(io.vertx.reactivex.core.Vertx vertx,
-      @KnotxWiremock WireMockServer staticPortServer) {
-    Assertions.assertEquals(1234, staticPortServer.port());
+      @KnotxInject("sampleServerPort") Integer sampleServerPort) {
+    // @formatter:off
+    given().
+        port(sampleServerPort).
+    when().
+      get("/any").
+    then().assertThat().
+        statusCode(200);
+    // @formatter:on
   }
 
+  @Disabled
   @Test
   @DisplayName("Dynamic port when applying configuration with '0' port value.")
   @KnotxApplyConfiguration("simple.conf")
@@ -61,6 +75,7 @@ class KnotxExtensionTest {
     Assertions.assertNotEquals(0, dynamicWiremockPortServer.port());
   }
 
+  @Disabled
   @Test
   @DisplayName("Dynamic port when applying configuration with random section.")
   @KnotxApplyConfiguration("simple.conf")

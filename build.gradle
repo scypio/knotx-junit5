@@ -77,7 +77,10 @@ dependencies {
   compile 'commons-io:commons-io'
   compile 'org.jsoup:jsoup'
 
+
   testCompile 'io.rest-assured:rest-assured:3.3.0'
+  testCompile 'io.vertx:vertx-web'
+  testRuntime 'io.knotx:knotx-launcher'
   testRuntime 'org.junit.jupiter:junit-jupiter-engine'
 }
 
