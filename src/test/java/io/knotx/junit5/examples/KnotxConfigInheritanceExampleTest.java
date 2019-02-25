@@ -3,9 +3,11 @@ package io.knotx.junit5.examples;
 import io.knotx.junit5.KnotxApplyConfiguration;
 import io.knotx.junit5.KnotxExtension;
 import io.vertx.reactivex.core.Vertx;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+@Disabled
 @ExtendWith(KnotxExtension.class)
 @KnotxApplyConfiguration("example_config.conf")
 public class KnotxConfigInheritanceExampleTest {

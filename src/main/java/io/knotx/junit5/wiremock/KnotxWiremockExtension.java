@@ -21,6 +21,7 @@ import static io.knotx.junit5.util.StreamUtil.anyKeyStartsWith;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.MappingBuilder;
 import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.core.Options;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 import com.google.common.collect.ImmutableMap;
@@ -32,12 +33,12 @@ import io.knotx.junit5.util.ReflectUtil;
 import io.knotx.junit5.util.StreamUtil;
 import io.vertx.core.json.JsonObject;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.extension.AfterAllCallback;
@@ -54,7 +55,7 @@ import org.junit.jupiter.api.extension.TestInstancePostProcessor;
 public class KnotxWiremockExtension extends KnotxBaseExtension
     implements ParameterResolver, TestInstancePostProcessor, AfterAllCallback {
 
-  static final String WIREMOCK_NAMESPACE = "test.wiremock";
+  private static final String WIREMOCK_NAMESPACE = "test.wiremock";
 
   private static final ReentrantLock globalMapsLock = new ReentrantLock(true);
   private static final HashMap<Integer, KnotxWiremockServer> portToServerMap = new HashMap<>();
@@ -101,7 +102,6 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
             "Annotating String with KnotxWiremock is not supported");
       }
     }
-
     return false;
   }
 
@@ -109,23 +109,45 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
   public Object resolveParameter(
       ParameterContext parameterContext, ExtensionContext extensionContext)
       throws ParameterResolutionException {
-    Class<?> type = getType(parameterContext);
 
-    if (type.equals(WireMockServer.class) || type.equals(Integer.class)) {
-      KnotxWiremock knotxWiremock = ReflectUtil.getWiremockAnnotation(parameterContext);
+    return parameterContext
+        .findAnnotation(KnotxWiremock.class).map(knotxWiremock -> {
+          String nameReference = getFullyQualifiedName(extensionContext, parameterContext,
+              knotxWiremock);
+          WireMockServer server = setupWiremockServer(nameReference, knotxWiremock);
+          Class<?> type = getType(parameterContext);
+          if (type.equals(WireMockServer.class)) {
+            return server;
+          } else if (type.equals(Integer.class)) {
+            return server.port();
+          } else {
+            throw new IllegalStateException("This should never happen!");
+          }
+        }).orElseThrow(() -> new IllegalStateException(
+            "Not supported parameter: " + parameterContext.getParameter().getName()));
 
-      String name = getClassFieldName(extensionContext, parameterContext);
+  }
 
-      KnotxWiremockServer server = setupWiremockServer(name, knotxWiremock);
-
-      if (type.equals(WireMockServer.class)) {
-        return server;
-      } else {
-        return server.getMockConfig().port;
+  private String getFullyQualifiedName(ExtensionContext extensionContext,
+      ParameterContext parameterContext, KnotxWiremock knotxWiremock) {
+    String paramName = checkAndGetParameterName(parameterContext);
+    if (knotxWiremock.port() == Options.DYNAMIC_PORT) {
+      String fieldName = getClassFieldName(extensionContext, paramName);
+      if (localInstanceServers.containsKey(fieldName)) {
+        return fieldName;
       }
     }
+    return getClassMethodParameterName(extensionContext, parameterContext);
 
-    throw new IllegalStateException("This should not happen");
+  }
+
+  private String checkAndGetParameterName(ParameterContext parameterContext) {
+    String name = parameterContext.getParameter().getName();
+    if (name.startsWith("arg")) {
+      throw new IllegalStateException(
+          "Please configure 'options.compilerArgs << \"-parameters\"', please check the README file.");
+    }
+    return name;
   }
 
   @Override
@@ -148,7 +170,9 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
     globalMapsLock.unlock();
   }
 
-  /** Sets up all annotated fields in test class */
+  /**
+   * Sets up all annotated fields in test class
+   */
   @Override
   public void postProcessTestInstance(Object testInstance, ExtensionContext context) {
     Optional<Class<?>> testClass = context.getTestClass();
@@ -215,13 +239,12 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
     if (!config.hasPath(WIREMOCK_NAMESPACE)) {
       return;
     }
-
-    Set<String> services = new HashSet<>(config.atKey(WIREMOCK_NAMESPACE).root().keySet());
+    List<String> serverNames = getServerNames(config);
 
     // build KnotxMockConfig objects from
-    for (String service : services) {
-      String base = KnotxWiremockExtension.WIREMOCK_NAMESPACE + "." + service;
-      String reference = forClass + service;
+    for (String serverName : serverNames) {
+      String base = KnotxWiremockExtension.WIREMOCK_NAMESPACE + "." + serverName;
+      String reference = forClass + serverName;
 
       KnotxMockConfig mockConfig = KnotxMockConfig.createMockConfig(config, reference, base);
       KnotxWiremockServer server = setupWiremockServer(mockConfig);
@@ -281,6 +304,18 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
     JsonObject json = new JsonObject();
     json.put("test", ImmutableMap.of("wiremock", serversConfig));
     overrides.add(json);
+  }
+  
+  private List<String> getServerNames(Config config) {
+    return config.getConfig(WIREMOCK_NAMESPACE).entrySet().stream()
+        .map(Entry::getKey)
+        .map(key -> {
+          if (key.contains(".")) {
+            return key.substring(0, key.indexOf("."));
+          } else {
+            return key;
+          }
+        }).collect(Collectors.toList());
   }
 
   private static WireMock getOrCreateWiremock(int port) {

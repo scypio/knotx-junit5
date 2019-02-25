@@ -45,8 +45,16 @@ dependencyManagement {
 
 tasks.withType(JavaCompile) {
   options.encoding = 'UTF-8'
+  options.compilerArgs << "-parameters"
   options.compilerArgs << '-Xlint:deprecation'
   options.incremental = true
+}
+
+tasks.withType(Test) {
+  environment("vertx.logger-delegate-factory-class-name", "io.vertx.core.logging.SLF4JLogDelegateFactory")
+
+  failFast = true
+  useJUnitPlatform()
 }
 
 dependencies {
@@ -68,6 +76,9 @@ dependencies {
   compile 'me.alexpanov:free-port-finder'
   compile 'commons-io:commons-io'
   compile 'org.jsoup:jsoup'
+
+  testCompile 'io.rest-assured:rest-assured:3.3.0'
+  testRuntime 'org.junit.jupiter:junit-jupiter-engine'
 }
 
 test {

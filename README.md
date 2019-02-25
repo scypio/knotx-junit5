@@ -1,6 +1,27 @@
-# Knot.x JUnit 5
+# Knot.x JUnit5
 JUnit 5 extensions and data type converters for Knot.x integration tests. Those tests allow to setup
 Knot.x instance with declared modules. It can be used both for module tests and regression tests.
+
+
+## Setup
+
+### Gradle 5 & Kotlin DSL: 
+First we need to add Knot.x Junit5 to dependencies. We can get the module version from 
+[Knot.x Dependencies](https://github.com/Knotx/knotx-dependencies).
+```
+dependencies {
+  implementation(platform("io.knotx:knotx-dependencies:${project.version}"))
+  testImplementation(group = "io.knotx", name = "knotx-junit5")
+  testImplementation(group = "io.vertx", name = "vertx-junit5")
+}
+```
+The `KnotxExtension` and `KnotxWiremockExtension` use parameters names to correctly initialize 
+injected fields and parameters (see `@KnotxWiremock`). It requires to compile modules with
+```
+tasks.withType(JavaCompile) {
+  options.compilerArgs << "-parameters"
+}
+```
 
 ## Extensions
 Provides following helpers:

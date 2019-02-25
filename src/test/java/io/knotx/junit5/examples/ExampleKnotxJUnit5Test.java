@@ -26,9 +26,11 @@ import io.knotx.junit5.KnotxExtension;
 import io.knotx.junit5.KnotxInject;
 import io.knotx.junit5.wiremock.KnotxWiremock;
 import io.vertx.reactivex.core.Vertx;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+@Disabled
 @ExtendWith(KnotxExtension.class)
 public class ExampleKnotxJUnit5Test {
 
