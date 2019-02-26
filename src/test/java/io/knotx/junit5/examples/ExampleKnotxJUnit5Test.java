@@ -30,7 +30,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-@Disabled
+@Disabled("This is only an example.")
 @ExtendWith(KnotxExtension.class)
 public class ExampleKnotxJUnit5Test {
 
@@ -47,32 +47,33 @@ public class ExampleKnotxJUnit5Test {
   }
 
   @Test
-  @KnotxApplyConfiguration("example_config.conf")
+  @KnotxApplyConfiguration("example_random_config.conf")
   public void vertxMethod(Vertx vertx) {
     // Knot.x config from method and class level will be injected into Vert.x instance
     // you can of course skip class level Knot.x config
   }
+
   @Test
-  @KnotxApplyConfiguration({"example_config.conf", "param_level_config.conf"})
+  @KnotxApplyConfiguration({"example_random_config.conf", "param_level_config.conf" })
   public void vertxMultiple(Vertx vertx) {
     // can also declare multiple configs in the same annotation
   }
 
   @Test
-  @KnotxApplyConfiguration("example_config.conf")
+  @KnotxApplyConfiguration("example_random_config.conf")
   public void noVertxInstance() {
     // no Vertx parameter - behavior is undefined
   }
 
   @Test
-  @KnotxApplyConfiguration("example_config.conf")
+  @KnotxApplyConfiguration("example_random_config.conf")
   public void injectRandomizedPort(@KnotxInject Integer globalServerPort) {
     // integer parameter will be filled with generated port
     // from 'example_config.conf' from section 'random' for entry 'globalServer'
   }
 
   @Test
-  @KnotxApplyConfiguration("example_config.conf")
+  @KnotxApplyConfiguration("example_random_config.conf")
   public void injectWireMockServer(
       @KnotxWiremock WireMockServer globalServer, @KnotxWiremock Integer minimalRequiredService) {
     // injects server/port number into given parameters

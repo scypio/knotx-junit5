@@ -144,12 +144,6 @@ public class KnotxExtension extends KnotxBaseExtension
   @Override
   public void beforeEach(ExtensionContext context) throws Exception {
     vertxExtension.beforeEach(context);
-
-    KnotxApplyConfiguration annotation = context.getTestMethod().get()
-        .getAnnotation(KnotxApplyConfiguration.class);
-    if (annotation == null) {
-      throw new IllegalStateException("All test methods must be annotated with @KnotxApplyConfiguration");
-    }
   }
 
   @Override

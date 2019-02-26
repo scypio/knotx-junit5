@@ -1,6 +1,8 @@
 package io.knotx.junit5;
 
 import static io.restassured.RestAssured.given;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import io.knotx.junit5.wiremock.KnotxWiremock;
@@ -11,12 +13,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(KnotxExtension.class)
-class KnotxExtensionTest {
+public class KnotxExtensionTest {
 
   @Disabled
   @Test
   @DisplayName("Exception when test method is not annotated with @KnotxApplyConfiguration")
   void noApplyConfiguration() {
+    Throwable exception = assertThrows(IllegalArgumentException.class, () -> {
+      throw new IllegalArgumentException("a message");
+    });
+    assertEquals("a message", exception.getMessage());
   }
 
   @Disabled
@@ -53,7 +59,7 @@ class KnotxExtensionTest {
 
   @Test
   @DisplayName("Expect response from mock server working on a random port.")
-  @KnotxApplyConfiguration("modules.conf")
+  @KnotxApplyConfiguration({"example_random_config.conf", "modules_config.conf" })
   void loadConfigurationWithStaticPort(io.vertx.reactivex.core.Vertx vertx,
       @KnotxInject("sampleServerPort") Integer sampleServerPort) {
     // @formatter:off

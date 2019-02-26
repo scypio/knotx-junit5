@@ -39,7 +39,7 @@ defaultTasks = ['build']
 dependencyManagement {
   imports {
     mavenBom "io.knotx:knotx-dependencies:${project.version}"
-    mavenBom 'org.junit:junit-bom:5.3.1'
+    mavenBom 'org.junit:junit-bom:5.3.2'
   }
 }
 

@@ -8,6 +8,7 @@ import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.core.Options;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,10 +18,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(KnotxWiremockExtension.class)
 @TestInstance(Lifecycle.PER_CLASS)
-class KnotxWiremockExtensionTest {
+public class KnotxWiremockExtensionTest {
 
-  private static final int STATIC_PORT = 1234;
-  private static final int STATIC_LOCAL_PORT = 2345;
+  private static final int STATIC_PORT = 11123;
+  private static final int STATIC_LOCAL_PORT = 11234;
   private static final String SERVER_URL = "/service/endpoint.json";
 
   @KnotxWiremock(port = STATIC_PORT)
@@ -147,7 +148,7 @@ class KnotxWiremockExtensionTest {
   @Test
   @DisplayName("Expect method-injected server when call server with random port.")
   void serverWithDynamicPort() {
-    assertNotEquals(0, dynamicPortServer.port());
+    assertNotEquals(Options.DYNAMIC_PORT, dynamicPortServer.port());
     // @formatter:off
     given().
         port(dynamicPortServer.port()).
