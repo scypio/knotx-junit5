@@ -12,24 +12,27 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class KnotxExtensionInheritanceTest {
 
   @Test
-  // TODO @DisplayName()
+  @DisplayName("Inject port from class level configuration file.")
   void configurationClassScope(@KnotxWiremock Integer minimalRequiredService) {
     Assertions.assertEquals(Integer.valueOf(3000), minimalRequiredService);
   }
 
   @Test
+  @DisplayName("Inject port from method level configuration file.")
   @KnotxApplyConfiguration("method_level_config.conf")
   void configurationMethodScope(@KnotxWiremock Integer mockService) {
     Assertions.assertEquals(new Integer(4001), mockService);
   }
 
   @Test
+  @DisplayName("Inject port from property level configuration file.")
   void configurationParamScope(@KnotxApplyConfiguration("param_level_config.conf") Vertx vertx,
       @KnotxWiremock Integer queryOnlyRepository) {
     Assertions.assertEquals(new Integer(5001), queryOnlyRepository);
   }
 
   @Test
+  @DisplayName("Inject ports from class/method/param level configuration files.")
   @KnotxApplyConfiguration("method_level_config.conf")
   void configurationMixedScope(@KnotxApplyConfiguration("param_level_config.conf") Vertx vertx,
       @KnotxWiremock Integer minimalRequiredService,
@@ -41,6 +44,7 @@ public class KnotxExtensionInheritanceTest {
   }
 
   @Test
+  @DisplayName("Inject port from param level configuration files when both method and param configurations overrides the class one.")
   @KnotxApplyConfiguration("method_level_config.conf")
   void configurationMethodParamScope(
       @KnotxApplyConfiguration("param_level_config.conf") Vertx vertx,
