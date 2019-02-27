@@ -22,6 +22,6 @@ import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.PARAMETER, ElementType.FIELD})
-public @interface KnotxInject {
+public @interface RadomPort {
   String value() default "";
 }

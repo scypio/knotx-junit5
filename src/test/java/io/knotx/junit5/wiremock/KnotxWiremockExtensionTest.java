@@ -24,10 +24,10 @@ public class KnotxWiremockExtensionTest {
   private static final int STATIC_LOCAL_PORT = 11234;
   private static final String SERVER_URL = "/service/endpoint.json";
 
-  @KnotxWiremock(port = STATIC_PORT)
+  @ClasspathResourcesMockServer(port = STATIC_PORT)
   private WireMockServer staticPortServer;
 
-  @KnotxWiremock
+  @ClasspathResourcesMockServer
   private WireMockServer dynamicPortServer;
 
   @BeforeAll
@@ -64,7 +64,7 @@ public class KnotxWiremockExtensionTest {
 
   @Test
   @DisplayName("Expect method-injected server call endpoint with static local port.")
-  void serverWithStaticPort(@KnotxWiremock(port = STATIC_LOCAL_PORT) WireMockServer server) {
+  void serverWithStaticPort(@ClasspathResourcesMockServer(port = STATIC_LOCAL_PORT) WireMockServer server) {
     stubForServer(server,
         get(anyUrl())
             .willReturn(
@@ -84,7 +84,7 @@ public class KnotxWiremockExtensionTest {
 
   @Test
   @DisplayName("Expect field-injected server when injected server has the same name as field one.")
-  void overloadServer(@KnotxWiremock WireMockServer staticPortServer) {
+  void overloadServer(@ClasspathResourcesMockServer WireMockServer staticPortServer) {
     // @formatter:off
     given().
         port(staticPortServer.port()).
@@ -99,7 +99,7 @@ public class KnotxWiremockExtensionTest {
   @Test
   @DisplayName("Expect method-injected server when injected server has static port and the same name as field one.")
   void overloadServerWithStaticPort(
-      @KnotxWiremock(port = STATIC_LOCAL_PORT) WireMockServer staticPortServer) {
+      @ClasspathResourcesMockServer(port = STATIC_LOCAL_PORT) WireMockServer staticPortServer) {
     stubForServer(staticPortServer,
         get(anyUrl())
             .willReturn(
@@ -119,7 +119,7 @@ public class KnotxWiremockExtensionTest {
 
   @Test
   @DisplayName("Expect field-injected server port when injected server has the same name as field one.")
-  void overloadServerWithPortInjection(@KnotxWiremock Integer staticPortServer) {
+  void overloadServerWithPortInjection(@ClasspathResourcesMockServer Integer staticPortServer) {
     // @formatter:off
     given().
         port(staticPortServer).
@@ -134,7 +134,7 @@ public class KnotxWiremockExtensionTest {
   @Test
   @DisplayName("Expect method-injected server when injected server has static port and the same name as field one.")
   void overloadServerWithStaticPortInjection(
-      @KnotxWiremock(port = STATIC_LOCAL_PORT) Integer staticPortServer) {
+      @ClasspathResourcesMockServer(port = STATIC_LOCAL_PORT) Integer staticPortServer) {
     // @formatter:off
     given().
         port(staticPortServer).

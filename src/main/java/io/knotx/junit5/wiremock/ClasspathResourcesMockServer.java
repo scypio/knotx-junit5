@@ -24,11 +24,12 @@ import java.lang.annotation.Target;
 
 /**
  * Used with {@linkplain KnotxWiremockExtension}. Allows for injecting {@linkplain WireMockServer}
- * objects as class fields or method parameters, with specified options.
+ * objects as class fields or method parameters, with specified options. It exposes static files
+ * available on classpath via HTTP endpoint.
  */
 @Target({ElementType.FIELD, ElementType.PARAMETER})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface KnotxWiremock {
+public @interface ClasspathResourcesMockServer {
 
   /**
    * Port on which server should start.

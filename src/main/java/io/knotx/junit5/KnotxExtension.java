@@ -17,7 +17,7 @@ package io.knotx.junit5;
 
 import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.Config;
-import io.knotx.junit5.wiremock.KnotxWiremock;
+import io.knotx.junit5.wiremock.ClasspathResourcesMockServer;
 import io.knotx.junit5.wiremock.KnotxWiremockExtension;
 import io.vertx.config.ConfigRetrieverOptions;
 import io.vertx.config.ConfigStoreOptions;
@@ -69,7 +69,7 @@ import org.junit.jupiter.api.extension.TestInstantiationException;
  *       KnotxApplyConfiguration}
  *   <li>{@linkplain io.vertx.reactivex.core.Vertx}, same as above
  *   <li>{@linkplain com.github.tomakehurst.wiremock.WireMockServer} when annotated with {@linkplain
- *       KnotxWiremock}
+ *       ClasspathResourcesMockServer}
  * </ul>
  */
 public class KnotxExtension extends KnotxBaseExtension
@@ -207,11 +207,11 @@ public class KnotxExtension extends KnotxBaseExtension
     if (forParam.startsWith("arg")) {
       forParam =
           parameterContext
-              .findAnnotation(KnotxInject.class)
+              .findAnnotation(RadomPort.class)
               .orElseThrow(
                   () ->
                       new IllegalArgumentException(
-                          "KnotxInject annotation not present "
+                          "RadomPort annotation not present "
                               + "and couldn't retrieve real parameter "
                               + "names due to missing compiler flag "
                               + "'-parameters' during tests compilation"))
@@ -244,7 +244,7 @@ public class KnotxExtension extends KnotxBaseExtension
 
   private boolean shouldSupportInjection(ParameterContext parameterContext) {
     return getType(parameterContext).equals(Integer.class)
-        && parameterContext.isAnnotated(KnotxInject.class);
+        && parameterContext.isAnnotated(RadomPort.class);
   }
 
   private Object internalVertxResolve(
