@@ -1,4 +1,4 @@
-# Knot.x JUnit 5
+# Knot.x JUnit5
 JUnit 5 extensions and data type converters for Knot.x integration tests. Those tests allow to setup
 Knot.x instance with declared modules. It can be used both for module tests and regression tests.
 
@@ -16,7 +16,7 @@ and WireMock servers (through KnotxWiremockExtension).
 @ExtendWith(KnotxExtension.class)
 public class ExampleIntegrationTest {
 
-  @KnotxWiremock(port = 4001)
+  @ClasspathResourcesMockServer(port = 4001)
   protected WireMockServer mockRepository;
 
   @Test
@@ -26,6 +26,7 @@ public class ExampleIntegrationTest {
   }
 }
 ```
+See more examples in [`ExampleKnotxJUnit5Test`](https://github.com/Knotx/knotx-junit5/blob/master/src/test/java/io/knotx/junit5/examples/ExampleKnotxJUnit5Test.java).
 
 See [Vert.x JUnit 5 integration](https://vertx.io/docs/vertx-junit5/java/) for guide
 how to interact with `VertxTestContext` instances. Also, under `io.knotx.junit5.util.RequestUtil`
@@ -37,7 +38,7 @@ The annotation allows to specify one and more Knot.x configuration(s) to load fo
 It accepts a paths array and loads all configuration entries using 
 [Vert.x Config](https://vertx.io/docs/vertx-config/java/) file stores, through a custom 
 implementation enhanced with support for HOCON hierarchical configuration loading and cross-file
-variable references (for more details see section [KnotxConcatConfigProcessor](#KnotxConcatConfigProcessor) down below). 
+variable references (for more details see [KnotxConcatConfigProcessor](docs/CROSS_FILES_CONFIGURATION.md) reference). 
 It supports two configuration semantics:
 
 - JSON (files with `json` extension)
@@ -55,126 +56,8 @@ KnotxApplyConfiguration annotation can be placed on class, method, and parameter
 parameter level will override method and class level, and method will override class level. For quick example see
 test package namespace `io.knotx.junit5.example`.
 
-#### KnotxConcatConfigProcessor
 
-This implementation of Vert.x [ConfigProcessor](https://vertx.io/docs/vertx-config/java/#_extending_the_config_retriever)
-enables KnotxExtension to load Knot.x configuration files hierarchically,
-including cross-file references to variables/placeholders (only with HOCON files).
-
-##### Vert.x Config limitations
-
-The HOCON cross-references are not available out-of-box in Vert.x Config mechanism.
-Knot.x supports JSON and HOCON configurations only, so that functionality would be useful in, for example, 
-integration tests that can run in parrallel (i.e. randomization of ports, references to other parts of configuration).
-
-However, Vert.x loads all given files (stores), evaluates them independently and then stiches
-all files together to create a final result (JSON).
-
-###### Cross-references example
-
-We have two stores definitions:
-
-```hocon
-"stores": [
-      {
-        "type": "file",
-        "format": "hocon",
-        "config": { "path": "config/application.conf" }
-      },
-      {
-        "type": "json",
-        "config": { "test.wiremock.mockService.port": 4321 }
-      }
-    ]
-```
-
-The `application.conf` file contains
-
-```hocon
-config.somemodule.options.config {
-  clientOptions {
-    port = ${test.wiremock.mockService.port}
-  }
-}
-test.wiremock {
-  mockService {
-    port = 1234
-  }
-}
-```
-
-The default Vert.x Config processing result:
-
-```JSON
-{
-  "config": {
-    "somemodule": {
-      "options": {
-        "config": {
-          "clientOptions": {
-            "port": 1234
-          }
-        }
-      }
-    }
-  },
-  "test": {
-    "wiremock": {
-      "mockService": {
-        "port": 4321
-      }
-    }
-  }
-}
-```
-
-Expected behaviour:
-
-```JSON
-{
-  "config": {
-    "somemodule": {
-      "options": {
-        "config": {
-          "clientOptions": {
-            "port": 4321
-          }
-        }
-      }
-    }
-  },
-  "test": {
-    "wiremock": {
-      "mockService": {
-        "port": 4321
-      }
-    }
-  }
-}
-```
-
-##### Solution
-
-KnotxConcatConfigProcessor works around this problem. It creates a new config format, in which you specify a JSON file:
-
-```json
-{ 
-  "paths": [ "base.conf", "specific.json" ], 
-  "overrides": [ 
-    { "baseKey": "newValue" },
-    { "specificKey": [ "entry1", "entry2" ] }
-  ]
-}
-```
-
-Files from `paths` are loaded in given order, and each override object from `overrides` (JSON object) is applied 
-on top of resulting HOCON Config object, and only then
-the configuration gets resolved and effectively returned for Knot.x for processing.
-
-Please refer to [HOCON readme](https://github.com/lightbend/config/blob/master/README.md) if you have any more questions regarding config loading
-behavior.
-
-#### Randomizing ports for usage inside tests
+#### @RandomPort
 
 If you want to randomize a port for using inside your test, you can define a namespace inside your HOCON config:
 
@@ -188,14 +71,22 @@ test {
   }
 }
 ```
-(example taken from `example_config.conf` file)
+(example taken from [`example_random_config.conf`](https://github.com/Knotx/knotx-junit5/blob/master/src/test/resources/example_random_config.conf) file)
 
 Then you can reference such variables from anywhere inside your configs; placeholder values will be substituted for real available
-port numbers. For an example how to reference such values see `io.knotx.junit5.examples.ExampleKnotxJUnit5Test#injectRandomizedPort`
+port numbers:
+```java
+@Test
+@KnotxApplyConfiguration("config/example_random_config.conf")
+public void injectRandomizedPort(@RandomPort Integer globalServerPort) {
+  // integer parameter will be filled with generated port from section 'random' for entry 'globalServer'
+}
+```
+
+The working example is defined in `io.knotx.junit5.examples.ExampleKnotxJUnit5Test#injectRandomizedPort`
 method from test classes.
 
 ### KnotxWiremockExtension
-
 Standalone WireMockServer injection and lifecycle management. Allows for:
  
 - Specifying on which port WireMockServer instance should be present,
@@ -206,7 +97,7 @@ Standalone WireMockServer injection and lifecycle management. Allows for:
 ***Warning:*** if you use KnotxExtension, you **must not inject** KnotxWiremockExtension, 
 as the functionality of the latter gets auto-imported into the former.
 
-#### WireMockServer injection and naming
+#### ClasspathResourcesMockServer injection and naming
 
 WireMockServer instances are recognized by their identifier - either test class instance variable name 
 or test method parameter name.
@@ -220,12 +111,12 @@ public class WireMockTest {
 
   private static final int MOCK_SERVICE_PORT_NUMBER = 3000;
 
-  @KnotxWiremock // will be started on a random port
+  @ClasspathResourcesMockServer // will be started on a random port
   private WireMockServer mockServiceRandom;
 
   @Test
   public void testWiremockRunningOnPort(
-      @KnotxWiremock(port = MOCK_SERVICE_PORT_NUMBER) WireMockServer server)
+      @ClasspathResourcesMockServer(port = MOCK_SERVICE_PORT_NUMBER) WireMockServer server)
       throws IOException, URISyntaxException {
     // ...
   }
@@ -238,12 +129,12 @@ public class WireMockTest {
 @ExtendWith(KnotxWiremockExtension.class)
 public class WireMockTest {
 
-  @KnotxWiremock
+  @ClasspathResourcesMockServer
   private WireMockServer mockServiceRandom;
 
   @Test
   public void testWiremockEquality(
-      @KnotxWiremock WireMockServer mockServiceRandom) {
+      @ClasspathResourcesMockServer WireMockServer mockServiceRandom) {
     assertTrue(this.mockServiceRandom == mockServiceRandom);
   }
 }
@@ -258,33 +149,28 @@ With KnotxExtension, created WireMockServer instances' ports will be available
 for referencing in Knot.x configuration under `test.wiremock.<wiremockserver_identifier>.port` variables
 (HOCON syntax only).
 
-### KnotxArgumentConverter
+## How to configure?
 
-Simplifies writing parameterized tests that have data source as String but expect a specific object as a parameter. Currently supports only io.knotx.dataobjects.Fragment and io.vertx.core.json.JsonObject.
-
-**Example usage:**
-
-```java
-public class ParameterizedTest {
-  @ParameterizedTest
-  @CsvSource(
-      value = {
-        "snippet_one_service_no_params.txt;{};1",
-        "snippet_one_service_one_param.txt;{\"val\":1};1",
-        "snippet_one_service_many_params.txt;{};1",
-        "snippet_two_services.txt;{\"val\":1,\"val2\":2};2",
-        "snippet_five_services.txt;{\"val\":3,\"val2\":4};5"
-      },
-      delimiter = ';')
-  public void testWithParameters(
-      @ConvertWith(KnotxArgumentConverter.class) Fragment fragment,
-      @ConvertWith(KnotxArgumentConverter.class) JsonObject parameters,
-      int number)
-      throws Exception {
-    // ...
-  }
+#### Gradle 5 & Kotlin DSL: 
+First we need to add Knot.x Junit5 to dependencies. We can get the module version from 
+[Knot.x Dependencies](https://github.com/Knotx/knotx-dependencies).
+```
+dependencies {
+  implementation(platform("io.knotx:knotx-dependencies:${project.version}"))
+  testImplementation(group = "io.knotx", name = "knotx-junit5")
+  testImplementation(group = "io.vertx", name = "vertx-junit5")
 }
 ```
+The `KnotxExtension` and `KnotxWiremockExtension` use parameters names to correctly initialize 
+injected fields and parameters (see `@ClasspathResourcesMockServer`). It **requires** to compile modules with
+```
+tasks.withType(JavaCompile) {
+  options.compilerArgs << "-parameters"
+}
+```
+
+#### Maven
+//TODO
 
 ## Frequently asked questions
 

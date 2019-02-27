@@ -16,8 +16,8 @@
 package io.knotx.junit5.util;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
+import io.knotx.junit5.wiremock.ClasspathResourcesMockServer;
 import io.knotx.junit5.wiremock.KnotxMockConfig;
-import io.knotx.junit5.wiremock.KnotxWiremock;
 import io.knotx.junit5.wiremock.KnotxWiremockServer;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -32,9 +32,9 @@ public final class ReflectUtil {
   private ReflectUtil() {}
 
 
-  public static KnotxWiremock getWiremockAnnotation(ParameterContext parameterContext) {
+  public static ClasspathResourcesMockServer getWiremockAnnotation(ParameterContext parameterContext) {
     return parameterContext
-        .findAnnotation(KnotxWiremock.class)
+        .findAnnotation(ClasspathResourcesMockServer.class)
         .orElseThrow(IllegalStateException::new);
   }
 
@@ -44,7 +44,7 @@ public final class ReflectUtil {
     Arrays.stream(fields)
         .filter(
             field ->
-                field.isAnnotationPresent(KnotxWiremock.class)
+                field.isAnnotationPresent(ClasspathResourcesMockServer.class)
                     && field.getType().equals(WireMockServer.class))
         .forEach(consumer);
   }

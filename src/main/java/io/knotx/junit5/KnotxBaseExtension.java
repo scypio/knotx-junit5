@@ -53,7 +53,13 @@ public abstract class KnotxBaseExtension {
     return getClassName(context) + field.getName();
   }
 
-  protected String getClassFieldName(ExtensionContext context, ParameterContext parameterContext) {
-    return getClassName(context) + getParameterName(parameterContext);
+  protected String getClassFieldName(ExtensionContext context, String parameterName) {
+    return getClassName(context) + parameterName;
+  }
+
+  protected String getClassMethodParameterName(ExtensionContext context,
+      ParameterContext parameterContext) {
+    return getClassName(context) + getMethodName(parameterContext) + getParameterName(
+        parameterContext);
   }
 }
