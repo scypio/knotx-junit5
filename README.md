@@ -169,6 +169,9 @@ tasks.withType(JavaCompile) {
 }
 ```
 
+#### Maven
+//TODO
+
 ## Frequently asked questions
 
 #### Is parallel test execution possible?
