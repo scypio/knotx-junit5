@@ -20,21 +20,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/**
- * Specifies Knot.x configuration path. More details about Knot.x configuration can be found <a
- * href="https://github.com/Cognifide/knotx/wiki/Configuration">here</a>. and README.md.
- */
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.TYPE, ElementType.METHOD, ElementType.PARAMETER})
-public @interface KnotxApplyConfiguration {
-
-  /**
-   * Configuration files paths.
-   *
-   * <p>Knot.x uses <a href="https://github.com/lightbend/config/blob/master/HOCON.md">HOCON</a>
-   * syntax for files with *.conf extension, otherwise uses JSON.
-   *
-   * @return configuration files
-   */
-  String[] value();
+@Target({ElementType.PARAMETER, ElementType.FIELD})
+public @interface RandomPort {
+  String value() default "";
 }

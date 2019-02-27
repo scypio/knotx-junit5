@@ -15,7 +15,9 @@
  */
 package io.knotx.junit5;
 
-import io.knotx.junit5.wiremock.KnotxWiremock;
+import com.google.common.collect.ImmutableMap;
+import com.typesafe.config.Config;
+import io.knotx.junit5.wiremock.ClasspathResourcesMockServer;
 import io.knotx.junit5.wiremock.KnotxWiremockExtension;
 import io.vertx.config.ConfigRetrieverOptions;
 import io.vertx.config.ConfigStoreOptions;
@@ -25,12 +27,25 @@ import io.vertx.core.Vertx;
 import io.vertx.core.VertxException;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
+import java.lang.reflect.Executable;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Stream;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import me.alexpanov.net.FreePortFinder;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.AfterTestExecutionCallback;
@@ -54,7 +69,7 @@ import org.junit.jupiter.api.extension.TestInstantiationException;
  *       KnotxApplyConfiguration}
  *   <li>{@linkplain io.vertx.reactivex.core.Vertx}, same as above
  *   <li>{@linkplain com.github.tomakehurst.wiremock.WireMockServer} when annotated with {@linkplain
- *       KnotxWiremock}
+ *       ClasspathResourcesMockServer}
  * </ul>
  */
 public class KnotxExtension extends KnotxBaseExtension
@@ -69,8 +84,13 @@ public class KnotxExtension extends KnotxBaseExtension
   private static final long DEFAULT_TIMEOUT_SECONDS = 30;
   private static final String VERTX_INSTANCE_STORE_KEY = "VertxInstance";
 
+  private static final String PORT = "port";
   private static final String HOCON_EXTENSION = "conf";
   private static final String JSON_EXTENSION = "json";
+  private static final String RANDOM_GEN_NAMESPACE = "test.random";
+
+  private static final ReadWriteLock referenceMapLock = new ReentrantReadWriteLock(true);
+  private static final Map<String, Integer> referencePortMap = new HashMap<>();
 
   private final VertxExtension vertxExtension = new VertxExtension();
   private final KnotxWiremockExtension wiremockExtension = new KnotxWiremockExtension();
@@ -88,7 +108,7 @@ public class KnotxExtension extends KnotxBaseExtension
     }
 
     // vertx and reactivex-vertx
-    return shouldSupportType(parameterContext);
+    return shouldSupportVertx(parameterContext) || shouldSupportInjection(parameterContext);
   }
 
   @Override
@@ -96,8 +116,11 @@ public class KnotxExtension extends KnotxBaseExtension
       ParameterContext parameterContext, ExtensionContext extensionContext)
       throws ParameterResolutionException {
 
-    if (shouldSupportType(parameterContext)) {
-      return internalResolve(parameterContext, extensionContext);
+    if (shouldSupportVertx(parameterContext)) {
+      return internalVertxResolve(parameterContext, extensionContext);
+    }
+    if (shouldSupportInjection(parameterContext)) {
+      return resolveInjection(parameterContext, extensionContext);
     }
     if (wiremockExtension.supportsParameter(parameterContext, extensionContext)) {
       return wiremockExtension.resolveParameter(parameterContext, extensionContext);
@@ -107,8 +130,7 @@ public class KnotxExtension extends KnotxBaseExtension
   }
 
   @Override
-  public void postProcessTestInstance(Object testInstance, ExtensionContext context)
-      throws Exception {
+  public void postProcessTestInstance(Object testInstance, ExtensionContext context) {
     wiremockExtension.postProcessTestInstance(testInstance, context);
   }
 
@@ -141,13 +163,86 @@ public class KnotxExtension extends KnotxBaseExtension
     vertxExtension.beforeTestExecution(context);
   }
 
-  private boolean shouldSupportType(ParameterContext parameterContext) {
-    Class<?> type = getType(parameterContext);
+  @Override
+  public void addToOverrides(Config config, List<JsonObject> overrides, String forReference) {
+    if (config.hasPath(RANDOM_GEN_NAMESPACE)) {
+      Config servicesConfig = config.getConfig(RANDOM_GEN_NAMESPACE);
+      HashMap<String, Integer> servicePorts = new HashMap<>();
 
+      // servicesConfig doesn't support
+      Set<String> services = new HashSet<>(servicesConfig.root().keySet());
+
+      // random port generation must be explicitly requested
+      services.removeIf(s -> !servicesConfig.hasPath(s + "." + PORT));
+
+      if (services.isEmpty()) {
+        return;
+      }
+
+      try {
+        referenceMapLock.writeLock().lock(); // effectively synchronizing FreePortFinder
+
+        services.forEach(s -> servicePorts.put(s, FreePortFinder.findFreeLocalPort()));
+
+        JsonObject override = new JsonObject();
+
+        servicePorts.forEach(
+            (name, port) -> {
+              override.put(name, ImmutableMap.of(PORT, port));
+              referencePortMap.put(forReference + name, port);
+            });
+
+        overrides.add(new JsonObject().put("test", new JsonObject().put("random", override)));
+      } finally {
+        referenceMapLock.writeLock().unlock();
+      }
+    }
+  }
+
+  private Object resolveInjection(
+      ParameterContext parameterContext, ExtensionContext extensionContext) {
+    // need class name, method name, param name
+    String forParam = checkAndGetParameterName(parameterContext);
+
+    if (!StringUtils.endsWithIgnoreCase(forParam, PORT)) {
+      throw new IllegalArgumentException(
+          "Requirement: Variable name must end with 'port' for valid value injection");
+    }
+
+    // trim param name
+    forParam = StringUtils.removeEndIgnoreCase(forParam, PORT);
+
+    String reference = getClassName(extensionContext) + getMethodName(parameterContext) + forParam;
+
+    try {
+      referenceMapLock.readLock().lock();
+
+      return referencePortMap.get(reference);
+    } finally {
+      referenceMapLock.readLock().unlock();
+    }
+  }
+
+  private String checkAndGetParameterName(ParameterContext parameterContext) {
+    String name = parameterContext.getParameter().getName();
+    if (name.startsWith("arg")) {
+      throw new IllegalStateException(
+          "Please configure 'options.compilerArgs << \"-parameters\"', please check the README file.");
+    }
+    return name;
+  }
+
+  private boolean shouldSupportVertx(ParameterContext parameterContext) {
+    Class<?> type = getType(parameterContext);
     return type.equals(io.vertx.reactivex.core.Vertx.class) || type.equals(Vertx.class);
   }
 
-  private Object internalResolve(
+  private boolean shouldSupportInjection(ParameterContext parameterContext) {
+    return getType(parameterContext).equals(Integer.class)
+        && parameterContext.isAnnotated(RandomPort.class);
+  }
+
+  private Object internalVertxResolve(
       ParameterContext parameterContext, ExtensionContext extensionContext) {
     Class<?> type = getType(parameterContext);
     boolean isReactivex = (type == io.vertx.reactivex.core.Vertx.class);
@@ -155,20 +250,17 @@ public class KnotxExtension extends KnotxBaseExtension
     // create vertx obj with knotx config injection
     if (type == Vertx.class || isReactivex) {
       Vertx vertx = (Vertx) resolveVertx(isReactivex, parameterContext, extensionContext);
-      KnotxApplyConfiguration knotxConfig;
 
-      knotxConfig =
-          parameterContext
-              .findAnnotation(KnotxApplyConfiguration.class)
-              .orElseGet(
-                  () ->
-                      parameterContext
-                          .getDeclaringExecutable()
-                          .getAnnotation(KnotxApplyConfiguration.class));
+      List<String> knotxConfigs = resolveAnnotationConfig(parameterContext);
 
       String forClass = getClassName(extensionContext);
+      String forMethod = getMethodName(parameterContext);
 
-      loadKnotxConfig(vertx, knotxConfig, forClass);
+      // required when tests are executed in parallel
+      // some map references go missing and need to be reconstructed
+      wiremockExtension.addMissingInstanceServers(forClass, extensionContext);
+
+      loadKnotxConfig(vertx, knotxConfigs, forClass, forMethod);
 
       if (isReactivex) {
         return new io.vertx.reactivex.core.Vertx(vertx);
@@ -177,6 +269,31 @@ public class KnotxExtension extends KnotxBaseExtension
     }
 
     throw new IllegalStateException("Please file a bug report, this shouldn't happen");
+  }
+
+  /**
+   * Developer announcement: This method could be worse, but enables us to apply a whole chain of
+   * different configurations taken from class, method, and parameter. User friendliness is a plus.
+   */
+  private List<String> resolveAnnotationConfig(ParameterContext parameter) {
+    Executable executable = parameter.getDeclaringExecutable();
+
+    KnotxApplyConfiguration classConfig =
+        executable.getDeclaringClass().getAnnotation(KnotxApplyConfiguration.class);
+    KnotxApplyConfiguration methodConfig = executable.getAnnotation(KnotxApplyConfiguration.class);
+    KnotxApplyConfiguration parameterConfig =
+        parameter.getParameter().getAnnotation(KnotxApplyConfiguration.class);
+
+    List<KnotxApplyConfiguration> list = Arrays.asList(classConfig, methodConfig, parameterConfig);
+    List<String> result = new LinkedList<>();
+
+    for (KnotxApplyConfiguration config : list) {
+      if (Objects.nonNull(config)) {
+        Collections.addAll(result, config.value());
+      }
+    }
+
+    return result;
   }
 
   private Object resolveVertx(
@@ -218,24 +335,29 @@ public class KnotxExtension extends KnotxBaseExtension
     }
   }
 
-  /**
-   * Load Knot.x config from given resource and apply it to Vertx instance
-   */
-  private void loadKnotxConfig(Vertx vertx, KnotxApplyConfiguration knotxConfig, String forClass) {
-    if (knotxConfig == null) {
-      throw new IllegalArgumentException(
-          "Missing @KnotxApplyConfiguration annotation with the path to configuration files");
-    }
+  /** Load Knot.x config from given resource and apply it to Vertx instance */
+  @SuppressWarnings("unchecked")
+  private void loadKnotxConfig(Vertx vertx, List<String> paths, String forClass, String forMethod) {
+    pathsCorrectnessGuard(paths);
+
+    List<JsonObject> overrides = new ArrayList<>();
+    Config fullConfig =
+        new KnotxConcatConfigProcessor()
+            .createHoconConfig(vertx.fileSystem(), createKnotxConcatConfig(paths, overrides));
+
+    wiremockExtension.addToOverrides(fullConfig, overrides, forClass);
+    this.addToOverrides(fullConfig, overrides, forClass + forMethod);
 
     CompletableFuture<Void> toComplete = new CompletableFuture<>();
+    DeploymentOptions deploymentOptions = createDeploymentConfig(paths, overrides);
 
     try {
-      final Class<? extends Verticle> knotxStarterVerticleClass = (Class<? extends Verticle>) Class
-          .forName("io.knotx.launcher.KnotxStarterVerticle");
+      final Class<? extends Verticle> knotxStarterVerticleClass =
+          (Class<? extends Verticle>) Class.forName("io.knotx.launcher.KnotxStarterVerticle");
 
       vertx.deployVerticle(
           knotxStarterVerticleClass,
-          createConfig(knotxConfig.value(), forClass),
+          deploymentOptions,
           ar -> {
             if (ar.succeeded()) {
               toComplete.complete(null);
@@ -245,8 +367,7 @@ public class KnotxExtension extends KnotxBaseExtension
           });
 
       toComplete.get();
-    } catch (ExecutionException ignore) {
-    } catch (InterruptedException e) {
+    } catch (InterruptedException | ExecutionException e) {
       throw new ParameterResolutionException("Couldn't create Knot.x configuration", e);
     } catch (ClassNotFoundException e) {
       throw new TestInstantiationException(
@@ -254,15 +375,19 @@ public class KnotxExtension extends KnotxBaseExtension
     }
   }
 
-  private DeploymentOptions createConfig(String[] paths, String forClass) {
+  private void pathsCorrectnessGuard(List<String> paths) {
+    if (paths.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Missing @KnotxApplyConfiguration annotation with the path to configuration files");
+    }
+
+    paths.forEach(this::guardConfigFormat);
+  }
+
+  private DeploymentOptions createDeploymentConfig(List<String> paths, List<JsonObject> overrides) {
     ConfigRetrieverOptions retrieverOptions = new ConfigRetrieverOptions();
 
-    Stream.of(paths).forEach(this::guardConfigFormat);
-
-    JsonObject config = new JsonObject();
-
-    config.put("paths", Arrays.asList(paths));
-    config.put("overrides", wiremockExtension.getConfigOverrides(forClass));
+    JsonObject config = createKnotxConcatConfig(paths, overrides);
 
     retrieverOptions.addStore(
         new ConfigStoreOptions()
@@ -274,6 +399,10 @@ public class KnotxExtension extends KnotxBaseExtension
     JsonObject storesConfig = retrieverOptions.toJson();
     return new DeploymentOptions()
         .setConfig(new JsonObject().put("configRetrieverOptions", storesConfig));
+  }
+
+  private JsonObject createKnotxConcatConfig(List<String> paths, List<JsonObject> overrides) {
+    return new JsonObject().put("paths", paths).put("overrides", overrides);
   }
 
   private void guardConfigFormat(String path) {

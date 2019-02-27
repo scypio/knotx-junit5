@@ -15,6 +15,10 @@
  */
 package io.knotx.junit5;
 
+import com.typesafe.config.Config;
+import io.vertx.core.json.JsonObject;
+import java.lang.reflect.Field;
+import java.util.List;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
 import org.junit.jupiter.api.extension.ExtensionContext.Store;
@@ -33,5 +37,29 @@ public abstract class KnotxBaseExtension {
 
   protected String getClassName(ExtensionContext extensionContext) {
     return extensionContext.getTestClass().orElseThrow(IllegalStateException::new).getName();
+  }
+
+  protected String getMethodName(ParameterContext parameterContext) {
+    return parameterContext.getDeclaringExecutable().getName();
+  }
+
+  protected String getParameterName(ParameterContext parameterContext) {
+    return parameterContext.getParameter().getName();
+  }
+
+  public void addToOverrides(Config config, List<JsonObject> overrides, String forReference) {}
+
+  protected String getClassFieldName(ExtensionContext context, Field field) {
+    return getClassName(context) + field.getName();
+  }
+
+  protected String getClassFieldName(ExtensionContext context, String parameterName) {
+    return getClassName(context) + parameterName;
+  }
+
+  protected String getClassMethodParameterName(ExtensionContext context,
+      ParameterContext parameterContext) {
+    return getClassName(context) + getMethodName(parameterContext) + getParameterName(
+        parameterContext);
   }
 }

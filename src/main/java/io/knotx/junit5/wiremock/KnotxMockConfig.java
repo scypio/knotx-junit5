@@ -15,55 +15,105 @@
  */
 package io.knotx.junit5.wiremock;
 
+import static io.knotx.junit5.util.HoconUtil.getObjectOrDefault;
+import static io.knotx.junit5.util.HoconUtil.getStringOrDefault;
+
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.Options;
+import com.github.tomakehurst.wiremock.http.HttpHeader;
+import com.github.tomakehurst.wiremock.http.HttpHeaders;
+import com.typesafe.config.Config;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Map.Entry;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * Representation of {@linkplain WireMockServer}'s configurations stored in {@linkplain
  * KnotxWiremockExtension}.
  */
-class KnotxMockConfig {
-  public static final String MIMETYPE_AUTODETECT = "!autodetect";
-  public static final String PATH_INHERIT = "!inherit";
-  public static final int RANDOM_PORT = Options.DYNAMIC_PORT;
+public class KnotxMockConfig {
+  static final String PATH_INHERIT = "!inherit";
+  static final String MIMETYPE_AUTODETECT = "!autodetect";
+  static final String URL_MATCHING_ALL = ".*";
+  static final int RANDOM_PORT = Options.DYNAMIC_PORT;
 
-  final String name;
-  final String requestPath;
-  final String mimetype;
-  final int port;
+  public final String reference;
+  public final int port;
+  public final String prependRequestPath;
+  public final String urlMatching;
+  public final String mimetype;
+  public final HttpHeaders additionalHeaders;
+  public final String callToConfigure;
 
-  KnotxMockConfig(String name, int port, String requestPath, String mimetype) {
-    this.name = name;
+  KnotxMockConfig(String reference, int port) {
+    this.reference = reference;
     this.port = port;
-    this.requestPath = requestPath;
-    this.mimetype = mimetype;
-  }
-
-  KnotxMockConfig(String name, int port, String requestPath) {
-    this.name = name;
-    this.port = port;
-    this.requestPath = requestPath;
+    this.prependRequestPath = PATH_INHERIT;
+    this.urlMatching = URL_MATCHING_ALL;
     this.mimetype = MIMETYPE_AUTODETECT;
-  }
-
-  KnotxMockConfig(String name, int port) {
-    this.name = name;
-    this.port = port;
-    this.requestPath = PATH_INHERIT;
-    this.mimetype = MIMETYPE_AUTODETECT;
-  }
-
-  KnotxMockConfig(String name) {
-    this.name = name;
-    this.port = RANDOM_PORT;
-    this.requestPath = PATH_INHERIT;
-    this.mimetype = MIMETYPE_AUTODETECT;
+    this.additionalHeaders = HttpHeaders.noHeaders();
+    this.callToConfigure = null;
   }
 
   KnotxMockConfig(KnotxMockConfig parent, int newPort) {
-    this.name = parent.name;
+    this.reference = parent.reference;
     this.port = newPort;
-    this.requestPath = parent.requestPath;
+    this.prependRequestPath = parent.prependRequestPath;
+    this.urlMatching = parent.urlMatching;
     this.mimetype = parent.mimetype;
+    this.additionalHeaders = parent.additionalHeaders;
+    this.callToConfigure = parent.callToConfigure;
+  }
+
+  private KnotxMockConfig(
+      String reference,
+      Integer port,
+      String prependRequestPath,
+      String urlMatching,
+      String mimetype,
+      HttpHeaders additionalHeaders,
+      String callToConfigure) {
+    this.reference = reference;
+    this.port = port;
+    this.prependRequestPath = prependRequestPath;
+    this.urlMatching = urlMatching;
+    this.mimetype = mimetype;
+    this.additionalHeaders = additionalHeaders;
+    this.callToConfigure = callToConfigure;
+  }
+
+  static KnotxMockConfig createMockConfig(Config config, String reference, String base) {
+    int port = RANDOM_PORT;
+    String prependRequestPath;
+    String urlMatching;
+    String mimetype;
+    Map<String, Object> headers;
+    String callMethod;
+
+    final String path = base + ".port";
+
+    // get port only if it's integer and not null
+    if (config.hasPathOrNull(path)
+        && !config.getIsNull(path)
+        && config.getAnyRef(path) instanceof Integer) {
+      port = config.getInt(path);
+    }
+
+    prependRequestPath =
+        getStringOrDefault(config, base + ".prependRequestFilePath", StringUtils.EMPTY);
+    urlMatching = getStringOrDefault(config, base + ".urlMatching", URL_MATCHING_ALL);
+    mimetype = getStringOrDefault(config, base + ".mimetype", MIMETYPE_AUTODETECT);
+    headers = getObjectOrDefault(config, base + ".additionalHeaders", Collections.emptyMap());
+
+    HttpHeaders httpHeaders = new HttpHeaders();
+    for (Entry<String, Object> entry : headers.entrySet()) {
+      httpHeaders = httpHeaders.plus(new HttpHeader(entry.getKey(), entry.getValue().toString()));
+    }
+
+    callMethod = getStringOrDefault(config, base + ".callToConfigure", null);
+
+    return new KnotxMockConfig(
+        reference, port, prependRequestPath, urlMatching, mimetype, httpHeaders, callMethod);
   }
 }

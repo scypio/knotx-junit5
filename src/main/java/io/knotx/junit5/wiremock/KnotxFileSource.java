@@ -43,9 +43,11 @@ class KnotxFileSource extends ResponseTransformer {
           "txt", "text/plain");
 
   private boolean autodetectMime;
+  private final KnotxMockConfig config;
 
-  public KnotxFileSource(KnotxMockConfig config) {
+  KnotxFileSource(KnotxMockConfig config) {
     autodetectMime = KnotxMockConfig.MIMETYPE_AUTODETECT.equals(config.mimetype);
+    this.config = config;
   }
 
   @Override
@@ -53,31 +55,57 @@ class KnotxFileSource extends ResponseTransformer {
       Request request, Response response, FileSource files, Parameters parameters) {
     String requestPath;
 
+    requestPath = getRequestPath(request);
+
+    Builder builder = Builder.like(response);
+
+    HttpHeaders httpHeaders = HttpHeaders.copyOf(config.additionalHeaders);
+    String mime;
+
+    mime = resolveMimetype(requestPath);
+
+    // original headers overwrite
+    for (HttpHeader header : response.getHeaders().all()) {
+      httpHeaders = httpHeaders.plus(header);
+    }
+
+    httpHeaders.plus(HttpHeader.httpHeader("Content-Type", mime));
+
+    builder.headers(httpHeaders);
+
+    requestPath = StringUtils.removeStart(requestPath, "/");
+    String body = FileReader.readTextSafe(requestPath);
+
+    return builder.body(body).build();
+  }
+
+  private String getRequestPath(Request request) {
+    String requestPath;
     try {
       requestPath = new URL(request.getAbsoluteUrl()).getPath();
     } catch (MalformedURLException e) {
       throw new IllegalStateException("Malformed request URL", e);
     }
+    return requestPath;
+  }
 
-    Builder builder = Builder.like(response);
-
+  private String resolveMimetype(String requestPath) {
+    String mime;
     if (autodetectMime) {
       String extension = FilenameUtils.getExtension(requestPath);
-      String mime = extensionMapping.get(extension);
+      mime = extensionMapping.get(extension);
 
       if (StringUtils.isNotBlank(mime)) {
         mime += CHARSET_APPEND;
-        builder.headers(
-            HttpHeaders.copyOf(response.getHeaders())
-                .plus(HttpHeader.httpHeader("Content-Type", mime)));
+      }
+    } else {
+      mime = config.mimetype;
+
+      if (!mime.contains("charset")) {
+        mime += CHARSET_APPEND;
       }
     }
-
-    requestPath = StringUtils.removeStart(requestPath, "/");
-
-    String body = FileReader.readTextSafe(requestPath);
-
-    return builder.body(body).build();
+    return mime;
   }
 
   @Override
