@@ -202,21 +202,7 @@ public class KnotxExtension extends KnotxBaseExtension
   private Object resolveInjection(
       ParameterContext parameterContext, ExtensionContext extensionContext) {
     // need class name, method name, param name
-    String forParam = getParameterName(parameterContext);
-
-    if (forParam.startsWith("arg")) {
-      forParam =
-          parameterContext
-              .findAnnotation(RadomPort.class)
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          "RadomPort annotation not present "
-                              + "and couldn't retrieve real parameter "
-                              + "names due to missing compiler flag "
-                              + "'-parameters' during tests compilation"))
-              .value();
-    }
+    String forParam = checkAndGetParameterName(parameterContext);
 
     if (!StringUtils.endsWithIgnoreCase(forParam, PORT)) {
       throw new IllegalArgumentException(
@@ -235,6 +221,15 @@ public class KnotxExtension extends KnotxBaseExtension
     } finally {
       referenceMapLock.readLock().unlock();
     }
+  }
+
+  private String checkAndGetParameterName(ParameterContext parameterContext) {
+    String name = parameterContext.getParameter().getName();
+    if (name.startsWith("arg")) {
+      throw new IllegalStateException(
+          "Please configure 'options.compilerArgs << \"-parameters\"', please check the README file.");
+    }
+    return name;
   }
 
   private boolean shouldSupportVertx(ParameterContext parameterContext) {
