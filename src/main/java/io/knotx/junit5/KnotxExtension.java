@@ -239,7 +239,7 @@ public class KnotxExtension extends KnotxBaseExtension
 
   private boolean shouldSupportInjection(ParameterContext parameterContext) {
     return getType(parameterContext).equals(Integer.class)
-        && parameterContext.isAnnotated(RadomPort.class);
+        && parameterContext.isAnnotated(RandomPort.class);
   }
 
   private Object internalVertxResolve(

@@ -78,7 +78,7 @@ port numbers:
 ```java
 @Test
 @KnotxApplyConfiguration("config/example_random_config.conf")
-public void injectRandomizedPort(@RadomPort Integer globalServerPort) {
+public void injectRandomizedPort(@RandomPort Integer globalServerPort) {
   // integer parameter will be filled with generated port from section 'random' for entry 'globalServer'
 }
 ```

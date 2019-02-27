@@ -23,7 +23,7 @@ import static io.knotx.junit5.wiremock.KnotxWiremockExtension.stubForServer;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import io.knotx.junit5.KnotxApplyConfiguration;
 import io.knotx.junit5.KnotxExtension;
-import io.knotx.junit5.RadomPort;
+import io.knotx.junit5.RandomPort;
 import io.knotx.junit5.wiremock.ClasspathResourcesMockServer;
 import io.vertx.reactivex.core.Vertx;
 import org.junit.jupiter.api.Test;
@@ -66,7 +66,7 @@ public class ExampleKnotxJUnit5Test {
 
   @Test
   @KnotxApplyConfiguration("config/example_random_config.conf")
-  void injectRandomizedPort(@RadomPort Integer globalServerPort) {
+  void injectRandomizedPort(@RandomPort Integer globalServerPort) {
     // integer parameter will be filled with generated port
     // from 'example_config.conf' from section 'random' for entry 'globalServer'
   }
@@ -77,6 +77,6 @@ public class ExampleKnotxJUnit5Test {
       @ClasspathResourcesMockServer WireMockServer globalServer,
       @ClasspathResourcesMockServer Integer minimalRequiredService) {
     // injects server/port number into given parameters
-    // this is different from @RadomPort mechanism
+    // this is different from @RandomPort mechanism
   }
 }

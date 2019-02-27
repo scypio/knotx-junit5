@@ -16,7 +16,7 @@ class KnotxExtensionTest {
   @Test
   @DisplayName("Expect response from HTTP server working on port from random section.")
   void callServerWithRandomPortFromRandomSection(io.vertx.reactivex.core.Vertx vertx,
-      @RadomPort Integer globalServerPort) {
+      @RandomPort Integer globalServerPort) {
     // @formatter:off
     given().
         port(globalServerPort).
@@ -31,7 +31,7 @@ class KnotxExtensionTest {
   @DisplayName("Expect null when no random section defined.")
   @KnotxApplyConfiguration("config/modules_wiremock_config.conf")
   void callServerWithRandomPortFromWiremockSection(io.vertx.reactivex.core.Vertx vertx,
-      @RadomPort Integer wGlobalServerPort) {
+      @RandomPort Integer wGlobalServerPort) {
     Assertions.assertNull(wGlobalServerPort);
   }
 
