@@ -9,7 +9,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(KnotxExtension.class)
 @KnotxApplyConfiguration({"config/example_random_config.conf", "config/modules_config.conf" })
-public class KnotxExtensionTest {
+class KnotxExtensionTest {
 
   private static final String ANY_ENDPOINT = "/any";
 

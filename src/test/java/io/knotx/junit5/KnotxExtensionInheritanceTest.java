@@ -9,7 +9,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(KnotxExtension.class)
 @KnotxApplyConfiguration({"config/example_wiremock_config.conf", "config/modules_config.conf" })
-public class KnotxExtensionInheritanceTest {
+class KnotxExtensionInheritanceTest {
 
   @Test
   @DisplayName("Inject port from class level configuration file.")

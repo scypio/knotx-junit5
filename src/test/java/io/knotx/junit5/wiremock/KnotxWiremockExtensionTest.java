@@ -18,7 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(KnotxWiremockExtension.class)
 @TestInstance(Lifecycle.PER_CLASS)
-public class KnotxWiremockExtensionTest {
+class KnotxWiremockExtensionTest {
 
   private static final int STATIC_PORT = 11123;
   private static final int STATIC_LOCAL_PORT = 11234;

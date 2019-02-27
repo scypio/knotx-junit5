@@ -47,33 +47,33 @@ public class ExampleKnotxJUnit5Test {
 
   @Test
   @KnotxApplyConfiguration("config/example_random_config.conf")
-  public void vertxMethod(Vertx vertx) {
+  void vertxMethod(Vertx vertx) {
     // Knot.x config from method and class level will be injected into Vert.x instance
     // you can of course skip class level Knot.x config
   }
 
   @Test
   @KnotxApplyConfiguration({"config/example_random_config.conf", "config/param_level_example_config.conf" })
-  public void vertxMultiple(Vertx vertx) {
+  void vertxMultiple(Vertx vertx) {
     // can also declare multiple configs in the same annotation
   }
 
   @Test
   @KnotxApplyConfiguration("config/example_random_config.conf")
-  public void noVertxInstance() {
+  void noVertxInstance() {
     // no Vertx parameter - behavior is undefined
   }
 
   @Test
   @KnotxApplyConfiguration("config/example_random_config.conf")
-  public void injectRandomizedPort(@RadomPort Integer globalServerPort) {
+  void injectRandomizedPort(@RadomPort Integer globalServerPort) {
     // integer parameter will be filled with generated port
     // from 'example_config.conf' from section 'random' for entry 'globalServer'
   }
 
   @Test
   @KnotxApplyConfiguration("config/example_random_config.conf")
-  public void injectWireMockServer(
+  void injectWireMockServer(
       @ClasspathResourcesMockServer WireMockServer globalServer,
       @ClasspathResourcesMockServer Integer minimalRequiredService) {
     // injects server/port number into given parameters
