@@ -20,6 +20,7 @@ group = "io.knotx"
 plugins {
     id("java-library")
     id("maven-publish")
+    id("jacoco")
     id("signing")
     id("org.nosphere.apache.rat") version "0.4.0"
 }
