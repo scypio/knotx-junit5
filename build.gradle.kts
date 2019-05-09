@@ -146,3 +146,4 @@ signing {
 }
 
 apply(from = "gradle/javaAndUnitTests.gradle.kts")
+apply(from = "gradle/jacoco.gradle.kts")
