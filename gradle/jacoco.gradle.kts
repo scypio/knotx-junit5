@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-subprojects {
+allprojects {
     plugins.withId("jacoco") {
         tasks.getByName<JacocoReport>("jacocoTestReport") {
             reports {
