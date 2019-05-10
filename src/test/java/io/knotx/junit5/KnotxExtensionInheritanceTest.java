@@ -18,11 +18,13 @@ package io.knotx.junit5;
 import io.knotx.junit5.wiremock.ClasspathResourcesMockServer;
 import io.vertx.reactivex.core.Vertx;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(KnotxExtension.class)
+@Disabled("Disabled due to knotx-junit5#30")
 @KnotxApplyConfiguration({"config/example_wiremock_config.conf", "config/modules_config.conf" })
 class KnotxExtensionInheritanceTest {
 
