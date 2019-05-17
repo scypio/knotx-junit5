@@ -59,7 +59,7 @@ dependencies {
     testImplementation(group = "io.rest-assured", name = "rest-assured", version = "3.3.0")
     testImplementation(group = "io.vertx", name = "vertx-web")
 
-    testRuntime("io.knotx:knotx-launcher")
+    testRuntime("io.knotx:knotx-launcher:${project.version}")
     testRuntime(group = "org.junit.jupiter", name = "junit-jupiter-engine")
 }
 
