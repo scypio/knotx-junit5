@@ -24,7 +24,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(KnotxExtension.class)
-@Disabled("Disabled due to knotx-junit5#30")
 @KnotxApplyConfiguration({"config/example_wiremock_config.conf", "config/modules_config.conf" })
 class KnotxExtensionInheritanceTest {
 
