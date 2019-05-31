@@ -70,7 +70,7 @@ class KnotxWiremockExtensionTest {
     given().
         port(STATIC_PORT).
     when().
-      get(SERVER_URL).
+        get(SERVER_URL).
     then().assertThat().
         statusCode(200).
         header("scope", "class");
@@ -90,7 +90,7 @@ class KnotxWiremockExtensionTest {
     given().
         port(STATIC_LOCAL_PORT).
     when().
-      get(SERVER_URL).
+        get(SERVER_URL).
     then().assertThat().
         statusCode(200).
         header("scope", "method");
@@ -104,7 +104,7 @@ class KnotxWiremockExtensionTest {
     given().
         port(staticPortServer.port()).
     when().
-      get(SERVER_URL).
+        get(SERVER_URL).
     then().assertThat().
         statusCode(200).
         header("scope", "class");
@@ -125,7 +125,7 @@ class KnotxWiremockExtensionTest {
     given().
         port(STATIC_LOCAL_PORT).
     when().
-      get(SERVER_URL).
+        get(SERVER_URL).
     then().assertThat().
         statusCode(200).
         header("scope", "method");
@@ -139,7 +139,7 @@ class KnotxWiremockExtensionTest {
     given().
         port(staticPortServer).
     when().
-      get(SERVER_URL).
+        get(SERVER_URL).
     then().assertThat().
         statusCode(200).
         header("scope", "class");
@@ -154,7 +154,7 @@ class KnotxWiremockExtensionTest {
     given().
         port(staticPortServer).
     when().
-      get(SERVER_URL).
+        get(SERVER_URL).
     then().assertThat().
         statusCode(404);
     // @formatter:on
@@ -168,7 +168,7 @@ class KnotxWiremockExtensionTest {
     given().
         port(dynamicPortServer.port()).
     when().
-      get(SERVER_URL).
+        get(SERVER_URL).
     then().assertThat().
         statusCode(200).
         header("scope", "class");

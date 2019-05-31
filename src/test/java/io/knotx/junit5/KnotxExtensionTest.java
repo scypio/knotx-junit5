@@ -36,7 +36,7 @@ class KnotxExtensionTest {
     given().
         port(globalServerPort).
     when().
-      get(ANY_ENDPOINT).
+        get(ANY_ENDPOINT).
     then().assertThat().
         statusCode(200);
     // @formatter:on
