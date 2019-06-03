@@ -17,6 +17,7 @@ package io.knotx.junit5;
 
 import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.Config;
+import io.knotx.junit5.util.FreePortFinder;
 import io.knotx.junit5.wiremock.ClasspathResourcesMockServer;
 import io.knotx.junit5.wiremock.KnotxWiremockExtension;
 import io.vertx.config.ConfigRetrieverOptions;
@@ -44,7 +45,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import me.alexpanov.net.FreePortFinder;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
@@ -180,7 +180,7 @@ public class KnotxExtension extends KnotxBaseExtension
       }
 
       try {
-        referenceMapLock.writeLock().lock(); // effectively synchronizing FreePortFinder
+        referenceMapLock.writeLock().lock();
 
         services.forEach(s -> servicePorts.put(s, FreePortFinder.findFreeLocalPort()));
 

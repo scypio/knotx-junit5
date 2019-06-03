@@ -52,7 +52,6 @@ dependencies {
     implementation(group = "org.mockito", name = "mockito-core")
     implementation(group = "org.mockito", name = "mockito-junit-jupiter")
     implementation(group = "com.github.tomakehurst", name = "wiremock")
-    implementation(group = "me.alexpanov", name = "free-port-finder")
     implementation(group = "commons-io", name = "commons-io")
     implementation(group = "org.jsoup", name = "jsoup", version = "1.11.2")
 
