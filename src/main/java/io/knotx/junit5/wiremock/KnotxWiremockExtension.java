@@ -111,25 +111,32 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
       throws ParameterResolutionException {
 
     return parameterContext
-        .findAnnotation(ClasspathResourcesMockServer.class).map(knotxWiremock -> {
-          String nameReference = getFullyQualifiedName(extensionContext, parameterContext,
-              knotxWiremock);
-          WireMockServer server = setupWiremockServer(nameReference, knotxWiremock);
-          Class<?> type = getType(parameterContext);
-          if (type.equals(WireMockServer.class)) {
-            return server;
-          } else if (type.equals(Integer.class)) {
-            return server.port();
-          } else {
-            throw new IllegalStateException("This should never happen!");
-          }
-        }).orElseThrow(() -> new IllegalStateException(
-            "Not supported parameter: " + parameterContext.getParameter().getName()));
+        .findAnnotation(ClasspathResourcesMockServer.class)
+        .map(
+            knotxWiremock -> {
+              String nameReference =
+                  getFullyQualifiedName(extensionContext, parameterContext, knotxWiremock);
+              WireMockServer server = setupWiremockServer(nameReference, knotxWiremock);
+              Class<?> type = getType(parameterContext);
 
+              if (type.equals(WireMockServer.class)) {
+                return server;
+              } else if (type.equals(Integer.class)) {
+                return server.port();
+              }
+
+              throw new IllegalStateException("This should never happen!");
+            })
+        .orElseThrow(
+            () ->
+                new IllegalStateException(
+                    "Not supported parameter: " + parameterContext.getParameter().getName()));
   }
 
-  private String getFullyQualifiedName(ExtensionContext extensionContext,
-      ParameterContext parameterContext, ClasspathResourcesMockServer classpathResourcesMockServer) {
+  private String getFullyQualifiedName(
+      ExtensionContext extensionContext,
+      ParameterContext parameterContext,
+      ClasspathResourcesMockServer classpathResourcesMockServer) {
     String paramName = checkAndGetParameterName(parameterContext);
     if (classpathResourcesMockServer.port() == Options.DYNAMIC_PORT) {
       String fieldName = getClassFieldName(extensionContext, paramName);
@@ -138,7 +145,6 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
       }
     }
     return getClassMethodParameterName(extensionContext, parameterContext);
-
   }
 
   private String checkAndGetParameterName(ParameterContext parameterContext) {
@@ -170,9 +176,7 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
     globalMapsLock.unlock();
   }
 
-  /**
-   * Sets up all annotated fields in test class
-   */
+  /** Sets up all annotated fields in test class */
   @Override
   public void postProcessTestInstance(Object testInstance, ExtensionContext context) {
     Optional<Class<?>> testClass = context.getTestClass();
@@ -184,8 +188,8 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
         testClass.get(),
         field -> {
           String reference = getClassFieldName(context, field);
-          ClasspathResourcesMockServer wiremockAnnotation = field.getAnnotation(
-              ClasspathResourcesMockServer.class);
+          ClasspathResourcesMockServer wiremockAnnotation =
+              field.getAnnotation(ClasspathResourcesMockServer.class);
 
           WireMockServer server = setupWiremockServer(reference, wiremockAnnotation);
 
@@ -242,7 +246,7 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
     }
     List<String> serverNames = getServerNames(config);
 
-    // build KnotxMockConfig objects from
+    // build KnotxMockConfig objects from config
     for (String serverName : serverNames) {
       String base = KnotxWiremockExtension.WIREMOCK_NAMESPACE + "." + serverName;
       String reference = forClass + serverName;
@@ -310,13 +314,8 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
   private List<String> getServerNames(Config config) {
     return config.getConfig(WIREMOCK_NAMESPACE).entrySet().stream()
         .map(Entry::getKey)
-        .map(key -> {
-          if (key.contains(".")) {
-            return key.substring(0, key.indexOf("."));
-          } else {
-            return key;
-          }
-        }).collect(Collectors.toList());
+        .map(key -> key.contains(".") ? key.substring(0, key.indexOf(".")) : key)
+        .collect(Collectors.toList());
   }
 
   private static WireMock getOrCreateWiremock(int port) {
@@ -333,7 +332,8 @@ public class KnotxWiremockExtension extends KnotxBaseExtension
     }
   }
 
-  private KnotxWiremockServer setupWiremockServer(String reference, ClasspathResourcesMockServer classpathResourcesMockServer) {
+  private KnotxWiremockServer setupWiremockServer(
+      String reference, ClasspathResourcesMockServer classpathResourcesMockServer) {
     KnotxMockConfig config = new KnotxMockConfig(reference, classpathResourcesMockServer.port());
     return setupWiremockServer(config);
   }
