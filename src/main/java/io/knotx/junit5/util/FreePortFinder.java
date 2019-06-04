@@ -27,13 +27,13 @@ public class FreePortFinder {
     do {
       // IANA Ephemeral Port range
       port = RandomUtils.nextInt(49152, 65535);
-    } while (!isFree(port));
+    } while (!available(port));
 
     return port;
   }
 
-  private synchronized static boolean isFree(int port) {
-    try (ServerSocket ignored = new ServerSocket(port)) {
+  public synchronized static boolean available(int port) {
+    try (ServerSocket ignored = new ServerSocket(port, 1)) {
       // noop
     } catch (IOException e) {
       return false;
