@@ -19,8 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.knotx.junit5.wsl.DisabledOnWsl;
 import java.net.ServerSocket;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 class FreePortFinderTest {
@@ -33,7 +33,7 @@ class FreePortFinderTest {
   }
 
   @Test
-  @Disabled("Broken on WSL")
+  @DisabledOnWsl("Will pass, even though the port is taken")
   void forRandomPort_whenUsed_mustNotBeAvailable() {
     int port = FreePortFinder.findFreeLocalPort();
 

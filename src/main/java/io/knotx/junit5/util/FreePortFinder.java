@@ -19,7 +19,10 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import org.apache.commons.lang3.RandomUtils;
 
-public class FreePortFinder {
+public final class FreePortFinder {
+
+  /** Util class */
+  private FreePortFinder() {}
 
   /** Roll a port number and ensure it's available */
   public static int findFreeLocalPort() {
