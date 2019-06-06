@@ -21,7 +21,7 @@ import io.vertx.junit5.VertxTestContext;
 
 public final class RequestUtil {
 
-  /** Util class - no instantiation */
+  /** Util class */
   private RequestUtil() {}
 
   /**

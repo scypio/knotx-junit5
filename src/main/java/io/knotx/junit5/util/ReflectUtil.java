@@ -29,10 +29,11 @@ import org.junit.jupiter.api.extension.ParameterContext;
 
 public final class ReflectUtil {
 
+  /** Util class */
   private ReflectUtil() {}
 
-
-  public static ClasspathResourcesMockServer getWiremockAnnotation(ParameterContext parameterContext) {
+  public static ClasspathResourcesMockServer getWiremockAnnotation(
+      ParameterContext parameterContext) {
     return parameterContext
         .findAnnotation(ClasspathResourcesMockServer.class)
         .orElseThrow(IllegalStateException::new);
@@ -75,8 +76,7 @@ public final class ReflectUtil {
       field.setAccessible(true);
       return field.get(instance);
     } catch (IllegalAccessException e) {
-      throw new IllegalStateException(
-          "Could not retrieve field value for given instance", e);
+      throw new IllegalStateException("Could not retrieve field value for given instance", e);
     }
   }
 
@@ -85,8 +85,7 @@ public final class ReflectUtil {
     try {
       field.set(instance, value);
     } catch (IllegalAccessException | IllegalArgumentException e) {
-      throw new IllegalStateException(
-          "Could not inject value into requested field", e);
+      throw new IllegalStateException("Could not inject value into requested field", e);
     }
   }
 }

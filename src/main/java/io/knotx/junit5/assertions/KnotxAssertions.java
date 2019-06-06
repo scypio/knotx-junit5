@@ -20,9 +20,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public final class KnotxAssertions {
 
-  private KnotxAssertions() {
-    //util class
-  }
+  /** Util class */
+  private KnotxAssertions() {}
 
   public static void assertEqualsIgnoreWhitespace(String expected, String actual) {
     assertEquals(stripSpace(expected), stripSpace(actual));
@@ -45,5 +44,4 @@ public final class KnotxAssertions {
     }
     return result.toString().trim();
   }
-
 }

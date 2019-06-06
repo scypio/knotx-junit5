@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.knotx.junit5.utils;
+package io.knotx.junit5.util;
 
 import io.vertx.core.Context;
 import io.vertx.core.Future;
