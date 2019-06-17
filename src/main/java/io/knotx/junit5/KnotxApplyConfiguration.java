@@ -21,8 +21,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Specifies Knot.x configuration path. More details about Knot.x configuration can be found <a
- * href="https://github.com/Cognifide/knotx/wiki/Configuration">here</a>. and README.md.
+ * Specifies Knot.x configuration path. More details about Knot.x configuration can be found in
+ * README.md.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE, ElementType.METHOD, ElementType.PARAMETER})
