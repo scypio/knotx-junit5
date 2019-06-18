@@ -21,7 +21,7 @@ import java.util.Map;
 /** Easing access to HOCON structures */
 public final class HoconUtil {
 
-  /** Util class - no instantiation */
+  /** Util class */
   private HoconUtil() {}
 
   /**

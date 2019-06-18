@@ -19,16 +19,15 @@ import java.util.HashMap;
 import java.util.stream.Stream;
 
 public final class StreamUtil {
+
+  /** Util class */
   private StreamUtil() {}
 
-  public static <T> boolean anyKeyStartsWith(
-      HashMap<String, T> map, String startsWith) {
+  public static <T> boolean anyKeyStartsWith(HashMap<String, T> map, String startsWith) {
     return map.keySet().stream().anyMatch(s -> s.startsWith(startsWith));
   }
 
-  public static <T> Stream<T> concatValues(
-      HashMap<String, T> first, HashMap<String, T> second) {
-    return Stream.concat(
-        first.values().stream(), second.values().stream());
+  public static <T> Stream<T> concatValues(HashMap<String, T> first, HashMap<String, T> second) {
+    return Stream.concat(first.values().stream(), second.values().stream());
   }
 }

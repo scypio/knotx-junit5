@@ -24,21 +24,21 @@ import org.junit.jupiter.api.Assertions;
 
 public final class HtmlMarkupAssertions {
 
-  private static final Document.OutputSettings OUTPUT_SETTINGS = new Document.OutputSettings()
-      .escapeMode(Entities.EscapeMode.xhtml)
-      .indentAmount(2)
-      .prettyPrint(true);
+  private static final Document.OutputSettings OUTPUT_SETTINGS =
+      new Document.OutputSettings()
+          .escapeMode(Entities.EscapeMode.xhtml)
+          .indentAmount(2)
+          .prettyPrint(true);
 
-  private HtmlMarkupAssertions() {
-    //util class
-  }
+  /** Util class */
+  private HtmlMarkupAssertions() {}
 
   public static void assertHtmlBodyMarkupsEqual(String expectedHtml, String actualHtml) {
     assertHtmlBodyMarkupsEqual(expectedHtml, actualHtml, null);
   }
 
-  public static void assertHtmlBodyMarkupsEqual(String expectedHtml, String actualHtml,
-      String message) {
+  public static void assertHtmlBodyMarkupsEqual(
+      String expectedHtml, String actualHtml, String message) {
     final String expectedBodyMarkup = getFormattedBodyOfAFullPage(expectedHtml);
     final String actualBodyMarkup = getFormattedBodyOfAFullPage(actualHtml);
     Assertions.assertEquals(expectedBodyMarkup, actualBodyMarkup, message);

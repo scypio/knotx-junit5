@@ -19,7 +19,7 @@ import com.google.common.io.Resources;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
-public interface FileReader {
+public final class FileReader {
 
   /**
    * Read contents of resource and return as string. Ported from
@@ -29,7 +29,7 @@ public interface FileReader {
    * @return resource contents
    * @throws IOException resource can not be read
    */
-  static String readText(String path) throws IOException {
+  public static String readText(String path) throws IOException {
     return Resources.toString(Resources.getResource(path), StandardCharsets.UTF_8);
   }
 
@@ -40,7 +40,7 @@ public interface FileReader {
    * @return resource contents
    * @throws IllegalArgumentException on IOException
    */
-  static String readTextSafe(String path) {
+  public static String readTextSafe(String path) {
     try {
       return readText(path);
     } catch (IOException e) {
