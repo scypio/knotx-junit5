@@ -22,9 +22,14 @@ import org.apache.commons.lang3.RandomUtils;
 public final class FreePortFinder {
 
   /** Util class */
-  private FreePortFinder() {}
+  private FreePortFinder() {
+  }
 
-  /** Roll a port number and ensure it's available */
+  /**
+   * Roll a port number and ensure it's available
+   *
+   * @return port number
+   */
   public static int findFreeLocalPort() {
     int port;
     do {
