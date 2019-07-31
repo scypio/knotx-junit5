@@ -1,4 +1,3 @@
-[![][license img]][license]
 [![Build Status](https://dev.azure.com/knotx/Knotx/_apis/build/status/Knotx.knotx-junit5?branchName=master)](https://dev.azure.com/knotx/Knotx/_build/latest?definitionId=6&branchName=master)
 
 # Knot.x JUnit5
