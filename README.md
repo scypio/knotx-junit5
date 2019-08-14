@@ -182,8 +182,8 @@ is implemented inside `knotx-junit5` module.
 Some simple examples are available in test package namespace `io.knotx.junit5.example`.  
 For other use cases see following Knot.x projects that use this Knot.x JUnit5 module:
 - [Knot.x Stack](https://github.com/Knotx/knotx-stack)
+- [Knot.x HTTP Server](https://github.com/Knotx/knotx-server-http)
 - [Knot.x Data Bridge](https://github.com/Knotx/knotx-data-bridge)
-- [Knot.x Core](https://github.com/Cognifide/knotx)
 
 ## Bugs
 All feature requests and bugs can be filed as issues on [Gitub](https://github.com/Knotx/knotx-junit5/issues).
