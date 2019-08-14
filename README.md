@@ -153,7 +153,6 @@ for referencing in Knot.x configuration under `test.wiremock.<wiremockserver_ide
 
 ## How to configure?
 
-#### Gradle 5 & Kotlin DSL: 
 First we need to add Knot.x Junit5 to dependencies. We can get the module version from 
 [Knot.x Dependencies](https://github.com/Knotx/knotx-dependencies).
 ```
@@ -170,9 +169,6 @@ tasks.withType(JavaCompile) {
   options.compilerArgs << "-parameters"
 }
 ```
-
-#### Maven
-//TODO
 
 ## Frequently asked questions
 
