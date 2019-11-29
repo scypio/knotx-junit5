@@ -1,4 +1,6 @@
 [![Build Status](https://dev.azure.com/knotx/Knotx/_apis/build/status/Knotx.knotx-junit5?branchName=master)](https://dev.azure.com/knotx/Knotx/_build/latest?definitionId=6&branchName=master)
+[![CodeFactor](https://www.codefactor.io/repository/github/knotx/knotx-junit5/badge)](https://www.codefactor.io/repository/github/knotx/knotx-junit5)
+[![codecov](https://codecov.io/gh/Knotx/knotx-junit5/branch/master/graph/badge.svg)](https://codecov.io/gh/Knotx/knotx-junit5)
 
 # Knot.x JUnit5
 JUnit 5 extensions and data type converters for Knot.x integration tests. Those tests allow to setup
