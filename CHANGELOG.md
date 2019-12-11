@@ -2,6 +2,12 @@
 All notable changes to `knotx-junit5` will be documented in this file.
 
 ## Unreleased
+- [PR-39](https://github.com/Knotx/knotx-junit5/pull/39) - Fixed missing content-type header for ClasspathResourcesMockServer files
+
+## 2.0.0
+No notable changes.
+
+## 1.5.0
 - [PR-29](https://github.com/Knotx/knotx-junit5/pull/29) - Add `KnotxAssertions.assertEqualsIgnoreWhitespace`.
 - [PR-28](https://github.com/Knotx/knotx-junit5/pull/28) - Migrate from Gradle 4.X to 5.4.1.
 - [PR-27](https://github.com/Knotx/knotx-junit5/pull/27) - Unit tests for KnotxWiremockExtension, rename `KnotxWiremock` to `ClasspathResourcesMockServer`.

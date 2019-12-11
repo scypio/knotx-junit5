@@ -69,7 +69,7 @@ class KnotxFileSource extends ResponseTransformer {
       httpHeaders = httpHeaders.plus(header);
     }
 
-    httpHeaders.plus(HttpHeader.httpHeader("Content-Type", mime));
+    httpHeaders = httpHeaders.plus(HttpHeader.httpHeader("Content-Type", mime));
 
     builder.headers(httpHeaders);
 
