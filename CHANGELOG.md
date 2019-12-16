@@ -2,6 +2,9 @@
 All notable changes to `knotx-junit5` will be documented in this file.
 
 ## Unreleased
+List of changes that are finished but not yet released in any final version.
+
+## 2.1.0
 - [PR-39](https://github.com/Knotx/knotx-junit5/pull/39) - Fixed missing content-type header for ClasspathResourcesMockServer files
 
 ## 2.0.0
