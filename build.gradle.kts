@@ -22,8 +22,7 @@ plugins {
     id("io.knotx.java-library") version "0.1.1"
     id("io.knotx.maven-publish") version "0.1.1"
     id("io.knotx.jacoco") version "0.1.1"
-
-    id("org.nosphere.apache.rat") version "0.4.0"
+    id("org.nosphere.apache.rat") version "0.6.0"
 }
 
 repositories {
@@ -65,7 +64,7 @@ dependencies {
 
 tasks {
     named<RatTask>("rat") {
-        excludes.addAll("**/*.md", "**/build/*", "**/out/*", "**/*.conf", "**/*.json", "gradle", "gradle.properties", ".travis.yml", ".idea")
+        excludes.addAll(listOf("**/*.md", "**/build/*", "**/out/*", "**/*.conf", "**/*.json", "gradle", "gradle.properties", ".travis.yml", ".idea"))
     }
     getByName("build").dependsOn("rat")
 }
