@@ -57,7 +57,7 @@ class KnotxAssertionsTest {
 
   @DisplayName("Empty Jsons are equal.")
   @Test
-  void emptyJSONs() {
+  void emptyJsons() {
     assertJsonEquals(
         new JsonObject(),
         new JsonObject());
@@ -65,10 +65,26 @@ class KnotxAssertionsTest {
 
   @DisplayName("Jsons are equal.")
   @Test
-  void flatJSONs() {
+  void flatJsons() {
     assertJsonEquals(
         new JsonObject().put("A", 1),
         new JsonObject().put("A", 1));
+  }
+
+  @DisplayName("Jsons are equal even keys are in different order.")
+  @Test
+  void flatJsonsWithManyKeys() {
+    assertJsonEquals(
+        new JsonObject().put("B", 2).put("A", 1),
+        new JsonObject().put("A", 1).put("B", 2));
+  }
+
+  @DisplayName("Jsons are equal even keys are in different order.")
+  @Test
+  void flatJsonsWithManyKeysFromString() {
+    assertJsonEquals(
+        new JsonObject("{\"B\":2, \"A\":1}"),
+        new JsonObject("{\"A\":1, \"B\":2}"));
   }
 
   @DisplayName("Missing entry in Json ends with failure.")
@@ -201,6 +217,15 @@ class KnotxAssertionsTest {
         new JsonObject().put("A", new JsonArray().add(new JsonObject().put("B", 1))),
         new JsonObject().put("A", new JsonArray().add(new JsonObject().put("B", 2))),
         "[A.[].B]");
+  }
+
+  @DisplayName("Different order in Json(Array(Json)) ends with failure.")
+  @Test
+  void orderInArrayMatters() {
+    shouldFail(
+        new JsonObject().put("A", new JsonArray().add("A").add("B")),
+        new JsonObject().put("A", new JsonArray().add("B").add("A")),
+        "[A.[]]");
   }
 
   private void shouldFail(JsonObject expected, JsonObject current, String expectedPath) {

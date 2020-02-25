@@ -37,7 +37,7 @@ public final class KnotxAssertions {
 
   private static void assertJsonEquals(JsonObject expected, JsonObject current, String path) {
     expected.getMap().forEach((key, value) -> {
-      String nextPath = path.equals("") ? key : path + "." + key;
+      String nextPath = path.isEmpty() ? key : path + "." + key;
       if (value instanceof JsonObject) {
         JsonObject currentValue = current.getJsonObject(key);
         assertJsonEquals((JsonObject) value, currentValue, nextPath);
