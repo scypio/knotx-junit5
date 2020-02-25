@@ -18,6 +18,10 @@ package io.knotx.junit5.assertions;
 import static java.lang.Character.isWhitespace;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import java.util.Iterator;
+
 public final class KnotxAssertions {
 
   /** Util class */
@@ -25,6 +29,49 @@ public final class KnotxAssertions {
 
   public static void assertEqualsIgnoreWhitespace(String expected, String actual) {
     assertEquals(stripSpace(expected), stripSpace(actual));
+  }
+
+  public static void assertJsonEquals(JsonObject expected, JsonObject current) {
+    assertJsonEquals(expected, current, "");
+  }
+
+  private static void assertJsonEquals(JsonObject expected, JsonObject current, String path) {
+    expected.getMap().forEach((key, value) -> {
+      String nextPath = path.equals("") ? key : path + "." + key;
+      if (value instanceof JsonObject) {
+        JsonObject currentValue = current.getJsonObject(key);
+        assertJsonEquals((JsonObject) value, currentValue, nextPath);
+      } else if (value instanceof JsonArray) {
+        JsonArray expectedArray = (JsonArray) value;
+        JsonArray currentArray = current.getJsonArray(key);
+        assertJsonArrayEquals(expectedArray, currentArray, nextPath);
+      } else {
+        Object currentValue = current.getValue(key);
+        assertEquals(value, currentValue, "Invalid JSON [" + nextPath + "] value!");
+      }
+    });
+  }
+
+  private static void assertJsonArrayEquals(JsonArray expected, JsonArray current, String path) {
+    String nextPath = path + ".[]";
+    if (expected.size() != current.size()) {
+      throw new AssertionError(
+          "Arrays [" + nextPath + "] have different lengths <" + expected.size() + " ! = " + current
+              .size() + ">");
+    }
+    Iterator<Object> expectedIterator = expected.iterator();
+    Iterator<Object> currentIterator = current.iterator();
+    while (expectedIterator.hasNext()) {
+      Object expectedValue = expectedIterator.next();
+      Object currentValue = currentIterator.next();
+      if (expectedValue instanceof JsonObject) {
+        assertJsonEquals((JsonObject) expectedValue, (JsonObject) currentValue, nextPath);
+      } else if (expectedValue instanceof JsonArray) {
+        assertJsonArrayEquals((JsonArray) expectedValue, (JsonArray) currentValue, nextPath);
+      } else {
+        assertEquals(expectedValue, currentValue, "Invalid JSON [" + nextPath + "] value!");
+      }
+    }
   }
 
   private static String stripSpace(String toBeStripped) {

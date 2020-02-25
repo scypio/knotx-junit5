@@ -19,10 +19,11 @@ group = "io.knotx"
 
 plugins {
     `java-library`
-    id("io.knotx.java-library") version "0.1.1"
-    id("io.knotx.maven-publish") version "0.1.1"
-    id("io.knotx.jacoco") version "0.1.1"
-    id("org.nosphere.apache.rat") version "0.6.0"
+    id("io.knotx.java-library")
+    id("io.knotx.maven-publish")
+    id("io.knotx.jacoco")
+    id("io.knotx.unit-test")
+    id("org.nosphere.apache.rat")
 }
 
 repositories {
