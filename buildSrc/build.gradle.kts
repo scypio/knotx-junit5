@@ -19,6 +19,6 @@ repositories {
     gradlePluginPortal()
 }
 dependencies {
-    implementation("io.knotx:knotx-gradle-plugins:0.1.4")
+    implementation("io.knotx:knotx-gradle-plugins:0.1.5-SNAPSHOT")
     implementation("org.nosphere.apache.rat:org.nosphere.apache.rat.gradle.plugin:0.6.0")
 }
