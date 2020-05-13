@@ -188,6 +188,15 @@ For other use cases see following Knot.x projects that use this Knot.x JUnit5 mo
 - [Knot.x HTTP Server](https://github.com/Knotx/knotx-server-http)
 - [Knot.x Data Bridge](https://github.com/Knotx/knotx-data-bridge)
 
+## Utils
+
+### HoconLoader
+[HoconLoader](https://github.com/Knotx/knotx-junit5/blob/master/src/main/java/io/knotx/junit5/util/HoconLoader.java) 
+parses the [HOCON](https://github.com/lightbend/config/blob/master/HOCON.md) configuration 
+files and transforms all entries to JSON. This util is extremely helpful in 
+[Routing Handler](https://github.com/Knotx/knotx-server-http/tree/master/api#routing-handlers)'s 
+contract tests.
+
 ## Bugs
 All feature requests and bugs can be filed as issues on [Gitub](https://github.com/Knotx/knotx-junit5/issues).
 Do not use Github issues to ask questions, post them on the [User Group](https://groups.google.com/forum/#!forum/knotx) or [Gitter Chat](https://gitter.im/Knotx/Lobby).
