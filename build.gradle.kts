@@ -20,19 +20,17 @@ group = "io.knotx"
 plugins {
     `java-library`
     id("io.knotx.java-library")
-    id("io.knotx.maven-publish")
-    id("io.knotx.jacoco")
     id("io.knotx.unit-test")
+    id("io.knotx.jacoco")
+    id("io.knotx.maven-publish")
     id("io.knotx.release-java")
     id("org.nosphere.apache.rat")
 }
 
 repositories {
-    jcenter()
     mavenLocal()
-    maven { url = uri("https://plugins.gradle.org/m2/") }
-    maven { url = uri("https://oss.sonatype.org/content/groups/staging/") }
-    maven { url = uri("https://oss.sonatype.org/content/repositories/snapshots") }
+    jcenter()
+    gradlePluginPortal()
 }
 
 dependencies {
