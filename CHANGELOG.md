@@ -3,6 +3,8 @@ All notable changes to `knotx-junit5` will be documented in this file.
 
 ## Unreleased
 List of changes that are finished but not yet released in any final version.
+                
+## 2.2.0
 - [PR-56](https://github.com/Knotx/knotx-junit5/pull/56) - Move `HoconLoader` from the `Fragments` module to `JUnit5`.
 
 ## 2.1.0
