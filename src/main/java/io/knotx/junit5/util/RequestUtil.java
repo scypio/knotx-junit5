@@ -21,8 +21,11 @@ import io.vertx.junit5.VertxTestContext;
 
 public final class RequestUtil {
 
-  /** Util class */
-  private RequestUtil() {}
+  /**
+   * Util class
+   */
+  private RequestUtil() {
+  }
 
   /**
    * Safely execute onError handler on given result, passing checks to given test context
@@ -35,10 +38,16 @@ public final class RequestUtil {
   public static <T> void subscribeToResult_shouldFail(
       VertxTestContext context, Single<T> result, Consumer<Throwable> onError) {
     result
-        .doOnError(onError)
         .subscribe(
-            response -> context.failNow(new IllegalStateException("Error should occur")),
-            error -> context.completeNow());
+            response -> context.failNow(new AssertionError("Error should occur")),
+            error -> {
+              try {
+                onError.accept(error);
+                context.completeNow();
+              } catch (Exception | AssertionError t) {
+                context.failNow(t);
+              }
+            });
   }
 
   /**
@@ -52,28 +61,5 @@ public final class RequestUtil {
   public static <T> void subscribeToResult_shouldSucceed(
       VertxTestContext context, Single<T> result, Consumer<T> assertions) {
     result.doOnSuccess(assertions).subscribe(response -> context.completeNow(), context::failNow);
-  }
-
-  /**
-   * Verify that consumer doesn't error out when it accepts given consumable. Context is notified
-   * both in case of failure and success.
-   *
-   * @param context test context
-   * @param consumer which will accept consumable
-   * @param consumable object to process
-   * @param <T> type of consumable to process
-   */
-  public static <T> void processWithContextVerification(
-      VertxTestContext context, Consumer<T> consumer, T consumable) {
-    context.verify(
-        () -> {
-          try {
-            consumer.accept(consumable);
-
-            context.completeNow();
-          } catch (Exception e) {
-            context.failNow(e);
-          }
-        });
   }
 }
