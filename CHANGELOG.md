@@ -3,6 +3,8 @@ All notable changes to `knotx-junit5` will be documented in this file.
 
 ## Unreleased
 List of changes that are finished but not yet released in any final version.
+                
+## 2.3.0
 - [PR-62](https://github.com/Knotx/knotx-junit5/pull/62) - Fixes `RequestUtil` failure verification: assertion error not propagated.
                 
 ## 2.2.1
