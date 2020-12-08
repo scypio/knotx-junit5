@@ -16,7 +16,6 @@
 
 plugins {
   id 'java-library'
-  id 'io.spring.dependency-management' version '1.0.5.RELEASE'
   id 'maven'
 }
 
@@ -36,13 +35,6 @@ description = 'Knot.x JUnit5 test module'
 
 defaultTasks = ['build']
 
-dependencyManagement {
-  imports {
-    mavenBom "io.knotx:knotx-dependencies:${project.version}"
-    mavenBom 'org.junit:junit-bom:5.3.1'
-  }
-}
-
 tasks.withType(JavaCompile) {
   options.encoding = 'UTF-8'
   options.compilerArgs << '-Xlint:deprecation'
@@ -51,24 +43,26 @@ tasks.withType(JavaCompile) {
 
 
 dependencies {
-  compile 'io.vertx:vertx-core'
-  compile 'io.vertx:vertx-service-proxy'
-  compile 'io.vertx:vertx-rx-java2'
-  compile 'io.vertx:vertx-config'
-  compile 'io.vertx:vertx-config-hocon'
-  compile 'io.vertx:vertx-junit5'
+  implementation platform("io.knotx:knotx-dependencies:${project.version}")
 
-  compile 'org.junit.jupiter:junit-jupiter-api'
-  compile 'org.junit.jupiter:junit-jupiter-params'
-  compile 'org.junit.jupiter:junit-jupiter-migrationsupport'
+  implementation 'io.vertx:vertx-core'
+  implementation 'io.vertx:vertx-service-proxy'
+  implementation 'io.vertx:vertx-rx-java2'
+  implementation 'io.vertx:vertx-config'
+  implementation 'io.vertx:vertx-config-hocon'
+  implementation 'io.vertx:vertx-junit5'
 
-  compile 'org.mockito:mockito-core'
-  compile 'org.mockito:mockito-junit-jupiter'
-  compile 'com.github.tomakehurst:wiremock'
+  implementation 'org.junit.jupiter:junit-jupiter-api'
+  implementation 'org.junit.jupiter:junit-jupiter-params'
+  implementation 'org.junit.jupiter:junit-jupiter-migrationsupport'
 
-  compile 'me.alexpanov:free-port-finder'
-  compile 'commons-io:commons-io'
-  compile 'org.jsoup:jsoup'
+  implementation 'org.mockito:mockito-core'
+  implementation 'org.mockito:mockito-junit-jupiter'
+  implementation 'com.github.tomakehurst:wiremock'
+
+  implementation 'me.alexpanov:free-port-finder'
+  implementation 'commons-io:commons-io'
+  implementation 'org.jsoup:jsoup'
 }
 
 test {
