@@ -29,14 +29,8 @@ plugins {
 
 repositories {
     mavenLocal()
-    jcenter()
+    mavenCentral()
     gradlePluginPortal()
-}
-
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(8))
-    }
 }
 
 dependencies {
@@ -64,15 +58,22 @@ dependencies {
     testImplementation(group = "io.rest-assured", name = "rest-assured", version = "3.3.0")
     testImplementation(group = "io.vertx", name = "vertx-web")
 
-    testRuntime("io.knotx:knotx-launcher:${project.version}")
-    testRuntime(group = "org.junit.jupiter", name = "junit-jupiter-engine")
+    testRuntimeOnly("io.knotx:knotx-launcher:${project.version}")
+    testRuntimeOnly(group = "org.junit.jupiter", name = "junit-jupiter-engine")
 }
 
 tasks {
     named<RatTask>("rat") {
-        excludes.addAll(listOf("**/*.md", "**/build/*", "**/out/*", "**/*.conf", "**/*.json", "gradle", "gradle.properties", ".travis.yml", ".idea"))
+        excludes.addAll(listOf(
+            "**/*.md", // docs
+            "gradle/wrapper/**", "gradle*", "**/build/**", // Gradle
+            "*.iml", "*.ipr", "*.iws", "*.idea/**", // IDEs
+            "**/generated/*", "**/*.adoc", "**/resources/**", // assets
+            ".github/*"
+        ))
     }
     getByName("build").dependsOn("rat")
+    getByName("rat").dependsOn("compileJava")
 }
 
 publishing {
