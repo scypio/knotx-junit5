@@ -25,6 +25,7 @@ plugins {
     id("io.knotx.maven-publish")
     id("io.knotx.release-java")
     id("org.nosphere.apache.rat")
+    id("net.ossindex.audit")
 }
 
 repositories {
@@ -73,6 +74,12 @@ tasks {
     }
     getByName("build").dependsOn("rat")
     getByName("rat").dependsOn("compileJava")
+    // AUDIT
+    val audit = named("audit") {
+        group = "verification"
+    }
+    getByName("check").dependsOn(audit)
+    getByName("test").mustRunAfter(audit)
 }
 
 publishing {
