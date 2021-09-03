@@ -48,7 +48,6 @@ dependencies {
     implementation(group = "com.google.guava", name = "guava")
     implementation(group = "org.junit.jupiter", name = "junit-jupiter-api")
     implementation(group = "org.junit.jupiter", name = "junit-jupiter-params")
-    implementation(group = "org.junit.jupiter", name = "junit-jupiter-migrationsupport")
     implementation(group = "org.mockito", name = "mockito-core")
     implementation(group = "org.mockito", name = "mockito-junit-jupiter")
     implementation(group = "com.github.tomakehurst", name = "wiremock-jre8")
