@@ -51,7 +51,7 @@ dependencies {
     implementation(group = "org.junit.jupiter", name = "junit-jupiter-migrationsupport")
     implementation(group = "org.mockito", name = "mockito-core")
     implementation(group = "org.mockito", name = "mockito-junit-jupiter")
-    implementation(group = "com.github.tomakehurst", name = "wiremock")
+    implementation(group = "com.github.tomakehurst", name = "wiremock-jre8")
     implementation(group = "commons-io", name = "commons-io")
     implementation(group = "org.jsoup", name = "jsoup", version = "1.11.2")
 
