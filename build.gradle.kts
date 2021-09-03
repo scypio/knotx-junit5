@@ -52,9 +52,9 @@ dependencies {
     implementation(group = "org.mockito", name = "mockito-junit-jupiter")
     implementation(group = "com.github.tomakehurst", name = "wiremock-jre8")
     implementation(group = "commons-io", name = "commons-io")
-    implementation(group = "org.jsoup", name = "jsoup", version = "1.11.2")
+    implementation(group = "org.jsoup", name = "jsoup", version = "1.14.2")
 
-    testImplementation(group = "io.rest-assured", name = "rest-assured", version = "3.3.0")
+    testImplementation(group = "io.rest-assured", name = "rest-assured", version = "4.4.0")
     testImplementation(group = "io.vertx", name = "vertx-web")
 
     testRuntimeOnly("io.knotx:knotx-launcher:${project.version}")
